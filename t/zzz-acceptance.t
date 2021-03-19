@@ -20,10 +20,8 @@ BEGIN {
 }
 
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning';
-use Test::JSON::Schema::Acceptance 1.000;
-use Test::Memory::Cycle;
-use Test::File::ShareDir -share => { -dist => { 'JSON-Schema-Draft201909' => 'share' } };
-use JSON::Schema::Draft201909;
+use Test::JSON::Schema::Acceptance 1.000; # XXX 1.004
+use JSON::Schema::Tiny 'evaluate';
 
 foreach my $env (qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING NO_TODO TEST_DIR NO_SHORT_CIRCUIT)) {
   note $env.': '.($ENV{$env} // '');
@@ -33,18 +31,9 @@ note '';
 my $accepter = Test::JSON::Schema::Acceptance->new(
   $ENV{TEST_DIR} ? (test_dir => $ENV{TEST_DIR}) : (specification => 'draft2019-09'),
   include_optional => 1,
+  # XXX skip_dir => 'optional/format',
   verbose => 1,
 );
-
-my %options = (validate_formats => 1);
-my $js = JSON::Schema::Draft201909->new(%options);
-my $js_short_circuit = JSON::Schema::Draft201909->new(%options, short_circuit => 1);
-
-my $add_resource = sub {
-  my ($uri, $schema) = @_;
-  $js->add_schema($uri => $schema);
-  $js_short_circuit->add_schema($uri => $schema);
-};
 
 my $encoder = JSON::MaybeXS->new(allow_nonref => 1, utf8 => 0, convert_blessed => 1, canonical => 1, pretty => 1);
 $encoder->indent_length(2) if $encoder->can('indent_length');
@@ -52,17 +41,19 @@ $encoder->indent_length(2) if $encoder->can('indent_length');
 $accepter->acceptance(
   validate_data => sub {
     my ($schema, $instance_data) = @_;
-    my $result = $js->evaluate($instance_data, $schema);
-    my $result_short = $ENV{NO_SHORT_CIRCUIT} || $js_short_circuit->evaluate($instance_data, $schema);
+    my $result = evaluate($instance_data, $schema);
+    my $result_short = $ENV{NO_SHORT_CIRCUIT} || do {
+      local $JSON::Schema::Tiny::SHORT_CIRCUIT = 1;
+      evaluate($instance_data, $schema);
+    };
 
     note 'result: ', $encoder->encode($result);
-    note 'short-circuited result: ', $encoder->encode($result_short)
+
+    note 'short-circuited result: ', ($encoder->encode($result_short) ? 'true' : 'false')
       if not $ENV{NO_SHORT_CIRCUIT} and ($result xor $result_short);
 
     die 'results inconsistent between short_circuit = false and true'
-      if not $ENV{NO_SHORT_CIRCUIT}
-        and ($result xor $result_short)
-        and not grep $_->error =~ /but short_circuit is enabled/, $result_short->errors;
+      if not $ENV{NO_SHORT_CIRCUIT} and ($result xor $result_short);
 
     # if any errors contain an exception, generate a warning so we can be sure
     # to count that as a failure (an exception would be caught and perhaps TODO'd).
@@ -70,46 +61,22 @@ $accepter->acceptance(
     foreach my $r ($result, ($ENV{NO_SHORT_CIRCUIT} ? () : $result_short)) {
       warn 'evaluation generated an exception'
         if grep $_->{error} =~ /^EXCEPTION/
-            && $_->{error} !~ /but short_circuit is enabled/
             && $_->{error} !~ /(max|min)imum value is not a number$/, # optional/bignum.json
-          @{$r->TO_JSON->{errors}};
+          @{$r->{errors}};
     }
 
     $result;
   },
-  add_resource => $add_resource,
   @ARGV ? (tests => { file => \@ARGV }) : (),
+  # XXX skip_tests ...
   $ENV{NO_TODO} ? () : ( todo_tests => [
     { file => [
         'optional/bignum.json',                     # TODO: see issue #10
         'optional/content.json',                    # removed in TJSA 1.003
         'optional/ecmascript-regex.json',           # TODO: see issue #27
         'optional/float-overflow.json',             # see slack logs re multipleOf algo
-        'optional/format/iri-reference.json',       # not yet implemented
-        'optional/format/uri-template.json',        # not yet implemented
-        $ENV{AUTOMATED_TESTING} ? (                 # these all depend on optional prereqs
-        qw(
-          optional/format/date-time.json
-          optional/format/date.json
-          optional/format/time.json
-          optional/format/email.json
-          optional/format/hostname.json
-          optional/format/idn-hostname.json
-          optional/format/idn-email.json
-        ) ) : (),
       ] },
     # various edge cases that are difficult to accomodate
-    { file => 'optional/format/date-time.json', group_description => 'validation of date-time strings',
-      test_description => 'case-insensitive T and Z' },
-    { file => 'optional/format/date.json', group_description => 'validation of date strings',
-      test_description => 'only RFC3339 not all of ISO 8601 are valid' },
-    { file => 'optional/format/iri.json', group_description => 'validation of IRIs',  # see test suite issue 395
-      test_description => 'an invalid IRI based on IPv6' },
-    { file => 'optional/format/idn-hostname.json',
-      group_description => 'validation of internationalized host names' }, # IDN decoder, Data::Validate::Domain both have issues
-    { file => 'optional/format/uri.json',
-      test_description => 'validation of URIs',
-      test_description => 'an invalid URI with comma in scheme' },  # Mojo::URL does not fully validate
     $Config{ivsize} < 8 || $Config{nvsize} < 8 ?            # see issue #10
       { file => 'const.json',
         group_description => 'float and integers are equal up to 64-bit representation limits',
@@ -122,9 +89,6 @@ $accepter->acceptance(
       : (),
   ] ),
 );
-
-memory_cycle_ok($js, 'no leaks in the main evaluator object');
-memory_cycle_ok($js_short_circuit, 'no leaks in the short-circuiting evaluator object');
 
 
 # date        Test::JSON::Schema::Acceptance version
