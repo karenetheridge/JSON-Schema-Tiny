@@ -15,7 +15,6 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref);
 use Storable 'dclone';
 
-our $FORMAT_VALIDATION = 1; # to disable: local $JSON::Schema::Tiny::FORMAT_VALIDATION = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
 
 sub evaluate {
@@ -891,12 +890,12 @@ most cases, the keyword will simply be ignored, unless strict mode is enabled):
 =for :list
 * C<$schema> - only accepted if set to one of the draft7, draft201909, draft201212 metaschemas
 * C<$id>
-* C<$anchor> (added in draft 2019-09)
+* C<$anchor> (added in draft 2019-09) (although support may be added later)
 * C<$recursiveAnchor> and C<$recursiveRef> (only exists in draft 2019-09)
 * C<$dynamicAnchor> and C<$dynamicRef> (added in draft 2020-20)
 * C<$vocabulary> (added in draft 2019-09)
 * C<unevaluatedItems> and C<unevaluatedProperties> (added in draft 2019-09)
-* C<format>
+* C<format> (although some support may be added later)
 
 =head1 SEE ALSO
 
