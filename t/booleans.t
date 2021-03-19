@@ -10,11 +10,9 @@ use Test::More 0.88;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Fatal;
 use Test::Deep;
-use JSON::Schema::Draft201909;
+use JSON::Schema::Tiny 'evaluate';
 use lib 't/lib';
 use Helper;
-
-my $js = JSON::Schema::Draft201909->new;
 
 my @tests = (
   { schema => false, result => false },
@@ -26,8 +24,19 @@ foreach my $test (@tests) {
   my $data = 'hello';
   is(
     exception {
-      my $result = $js->evaluate($data, $test->{schema});
-      ok(!($result xor $test->{result}), json_sprintf('schema: %s evaluates to: %s', $test->{schema}, $test->{result}));
+      my $result = evaluate($data, $test->{schema});
+      cmp_deeply(
+        $result,
+        {
+          valid => $test->{result},
+          $test->{result} ? () : (errors => supersetof()),
+        },
+        'invalid result structure looks correct',
+      );
+
+      local $JSON::Schema::Tiny::BOOLEAN_RESULT = 1;
+      my $bool_result = evaluate($data, $test->{schema});
+      ok(!($bool_result xor $test->{result}), json_sprintf('schema: %s evaluates to: %s', $test->{schema}, $test->{result}));
     },
     undef,
     'no exceptions in evaluate',
@@ -35,7 +44,7 @@ foreach my $test (@tests) {
 }
 
 cmp_deeply(
-  $js->evaluate('hello', [])->TO_JSON,
+  evaluate('hello', []),
   {
     valid => false,
     errors => [

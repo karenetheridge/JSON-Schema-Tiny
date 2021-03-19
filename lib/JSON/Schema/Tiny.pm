@@ -12,16 +12,25 @@ no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 
+use B;
 use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref);
+use Carp 'croak';
 use Storable 'dclone';
+use Exporter 5.57 'import';
+use JSON::MaybeXS 1.004001 'is_bool';
+use Feature::Compat::Try;
+use JSON::PP ();
 
+our @EXPORT_OK = qw(evaluate);
+
+our $BOOLEAN_RESULT = 0;
+our $SHORT_CIRCUIT = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
 
 sub evaluate {
   my ($data, $schema) = @_;
 
-  my $collect_errors = wantarray;
-  return if not defined $collect_errors;  # called in void context
+  croak 'evaluate called in void context' if not defined wantarray;
 
   my $state = {
     depth => 0,
@@ -30,19 +39,31 @@ sub evaluate {
     schema_path => '',                  # the rest of the path, since the last traversed $ref
     errors => [],
     seen => {},
-    short_circuit => !$collect_errors,
+    short_circuit => $BOOLEAN_RESULT || $SHORT_CIRCUIT,
   };
 
   my $result;
-  eval { $result = _eval($data, $schema, $state) };
+  try {
+    $result = _eval($data, $schema, $state)
+  }
+  catch ($e) {
+    if (is_plain_hashref($e)) {
+      push @{$state->{errors}}, $e;
+    }
+    else {
+      E($state, 'EXCEPTION: '.$e);
+    }
 
-  if (defined $@) {
-    E($state, 'EXCEPTION: '.$@) if $@ ne "ABORT\n";
     $result = 0;
   }
 
-  return $collect_errors ? @{$state->{errors}} : $result;
+  return $BOOLEAN_RESULT ? $result : +{
+    valid => $result ? JSON::PP::true : JSON::PP::false,
+    $result ? () : (errors => $state->{errors}),
+  };
 }
+
+######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 sub _eval {
   my ($data, $schema, $state) = @_;
@@ -50,7 +71,7 @@ sub _eval {
   $state = { %$state };     # changes to $state should only affect subschemas, not parents
   delete $state->{keyword};
 
-  abort($state, 'maximum evaluation depth exceeded') if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
+  return E($state, 'maximum traversal depth exceeded') if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
 
 # XXX TODO: canonical_uri is always ''. can we detect loops?
 #  # find all schema locations in effect at this data path + canonical_uri combination
@@ -64,7 +85,7 @@ sub _eval {
 
   my $schema_type = get_type($schema);
   return $schema || E($state, 'subschema is false') if $schema_type eq 'boolean';
-  abort($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
+  return E($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
 
   my $result = 1;
 
@@ -160,7 +181,7 @@ sub _eval_keyword_enum {
   my ($self, $data, $schema, $state) = @_;
 
   my @s; my $idx = 0;
-  return 1 if any { _is_equal($data, $_, $s[$idx++] = {}) } @{$schema->{enum}};
+  return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } @{$schema->{enum}};
 
   return E($state, 'value does not match'
     .(!(grep $_->{path}, @s) ? ''
@@ -170,7 +191,7 @@ sub _eval_keyword_enum {
 sub _eval_keyword_const {
   my ($self, $data, $schema, $state) = @_;
 
-  return 1 if _is_equal($data, $schema->{const}, my $s = {});
+  return 1 if is_equal($data, $schema->{const}, my $s = {});
   return E($state, 'value does not match'
     .($s->{path} ? ' (differences start at "'.$s->{path}.'")' : ''));
 }
@@ -252,16 +273,13 @@ sub _eval_keyword_minLength {
 sub _eval_keyword_pattern {
   my ($self, $data, $schema, $state) = @_;
 
-  return 1 if not is_type('string', $data);
-  assert_keyword_type($state, $schema, 'string');
+  return if not assert_keyword_type($state, $schema, 'string');
+  assert_pattern($state, $schema->{pattern});
 
-  try {
-    return 1 if $data =~ m/$schema->{pattern}/;
-    return E($state, 'pattern does not match');
-  }
-  catch {
-    abort($state, $@);
-  };
+  return 1 if not is_type('string', $data);
+
+  return 1 if $data =~ m/$schema->{pattern}/;
+  return E($state, 'pattern does not match');
 }
 
 sub _eval_keyword_maxItems {
@@ -293,7 +311,7 @@ sub _eval_keyword_uniqueItems {
   assert_keyword_type($state, $schema, 'boolean');
 
   return 1 if not $schema->{uniqueItems};
-  return 1 if _is_elements_unique($data, my $equal_indices = []);
+  return 1 if is_elements_unique($data, my $equal_indices = []);
   return E($state, 'items at indices %d and %d are not unique', @$equal_indices);
 }
 
@@ -616,33 +634,37 @@ sub _eval_keyword_properties {
 sub _eval_keyword_patternProperties {
   my ($self, $data, $schema, $state) = @_;
 
+  return if not assert_keyword_type($state, $schema, 'object');
+
+  foreach my $property (sort keys %{$schema->{patternProperties}}) {
+    return if not assert_pattern({ %$state, _schema_path_suffix => $property }, $property);
+  }
+
   return 1 if not is_type('object', $data);
-  assert_keyword_type($state, $schema, 'object');
 
   my $valid = 1;
   foreach my $property_pattern (sort keys %{$schema->{patternProperties}}) {
-    my @matched_properties;
-    try {
-      @matched_properties = grep m/$property_pattern/, keys %$data;
-    }
-    catch {
-      abort({ %$state,
-        _schema_path_rest => jsonp($state->{schema_path}, 'patternProperties', $property_pattern) },
-      $@);
-    };
-    foreach my $property (sort @matched_properties) {
-      $valid = 0
-        if not _eval($data->{$property}, $schema->{patternProperties}{$property_pattern},
+    foreach my $property (sort grep m/$property_pattern/, keys %$data) {
+      if (_is_type('boolean', $schema->{patternProperties}{$property_pattern})) {
+        next if $schema->{patternProperties}{$property_pattern};
+
+        $valid = E({ %$state, data_path => jsonp($state->{data_path}, $property),
+          _schema_path_suffix => $property_pattern }, 'property not permitted');
+      }
+      else {
+        next if _eval($data->{$property}, $schema->{patternProperties}{$property_pattern},
           +{ %$state,
             data_path => jsonp($state->{data_path}, $property),
-            schema_path => jsonp($state->{schema_path}, 'patternProperties', $property_pattern),
-          });
-      last if not $valid and $state->{short_circuit};
+            schema_path => jsonp($state->{schema_path}, 'patternProperties', $property_pattern) });
+
+        $valid = 0;
+      }
+      last if $state->{short_circuit};
     }
   }
 
-  return 1 if $valid;
-  return E($state, 'not all properties are valid');
+  return E($state, 'not all properties are valid') if not $valid;
+  return 1;
 }
 
 sub _eval_keyword_additionalProperties {
@@ -696,9 +718,7 @@ sub _eval_keyword_propertyNames {
 
 # UTILITIES
 
-# E(), is_type, get_type() and other things from Utilities.
-
-sub _is_type {
+sub is_type {
   my ($type, $value) = @_;
 
   if ($type eq 'null') {
@@ -736,8 +756,8 @@ sub _is_type {
 }
 
 # only the core six types are reported (integers are numbers)
-# use _is_type('integer') to differentiate numbers from integers.
-sub _get_type {
+# use is_type('integer') to differentiate numbers from integers.
+sub get_type {
   my ($value) = @_;
 
   return 'null' if not defined $value;
@@ -756,11 +776,11 @@ sub _get_type {
 
 # compares two arbitrary data payloads for equality, as per
 # https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.4.2.3
-sub _is_equal {
+sub is_equal {
   my ($x, $y, $state) = @_;
   $state->{path} //= '';
 
-  my @types = map _get_type($_), $x, $y;
+  my @types = map get_type($_), $x, $y;
   return 0 if $types[0] ne $types[1];
   return 1 if $types[0] eq 'null';
   return $x eq $y if $types[0] eq 'string';
@@ -769,10 +789,10 @@ sub _is_equal {
   my $path = $state->{path};
   if ($types[0] eq 'object') {
     return 0 if keys %$x != keys %$y;
-    return 0 if not _is_equal([ sort keys %$x ], [ sort keys %$y ]);
+    return 0 if not is_equal([ sort keys %$x ], [ sort keys %$y ]);
     foreach my $property (keys %$x) {
       $state->{path} = jsonp($path, $property);
-      return 0 if not _is_equal($x->{$property}, $y->{$property}, $state);
+      return 0 if not is_equal($x->{$property}, $y->{$property}, $state);
     }
     return 1;
   }
@@ -781,7 +801,7 @@ sub _is_equal {
     return 0 if @$x != @$y;
     foreach my $idx (0 .. $#{$x}) {
       $state->{path} = $path.'/'.$idx;
-      return 0 if not $self->_is_equal($x->[$idx], $y->[$idx], $state);
+      return 0 if not is_equal($x->[$idx], $y->[$idx], $state);
     }
     return 1;
   }
@@ -791,7 +811,7 @@ sub _is_equal {
 
 # checks array elements for uniqueness. short-circuits on first pair of matching elements
 # if second arrayref is provided, it is populated with the indices of identical items
-sub _is_elements_unique {
+sub is_elements_unique {
   my ($array, $equal_indices) = @_;
   foreach my $idx0 (0 .. $#{$array}-1) {
     foreach my $idx1 ($idx0+1 .. $#{$array}) {
@@ -816,18 +836,18 @@ sub E {
   my $schema_path = delete $state->{_schema_path_rest}
     // $state->{schema_path}.($state->{keyword} ? '/'.$state->{keyword} : '');
 
-  my $uri = $state->{canonical_schema_uri}->clone;
-  $uri->fragment(($uri->fragment//'').$schema_path);
-  $uri->fragment(undef) if not length($uri->fragment);
-  undef $uri if $uri eq '' and $state->{traversed_schema_path}.$schema_path eq ''
-    or $uri eq '#'.$state->{traversed_schema_path}.$schema_path;
+  #my $uri = $state->{canonical_schema_uri}->clone;
+  #$uri->fragment(($uri->fragment//'').$schema_path);
+  #$uri->fragment(undef) if not length($uri->fragment);
+  #undef $uri if $uri eq '' and $state->{traversed_schema_path}.$schema_path eq ''
+  #  or $uri eq '#'.$state->{traversed_schema_path}.$schema_path;
 
   push @{$state->{errors}}, {
     instanceLocation => $state->{data_path},
     keywordLocation => $state->{traversed_schema_path}.$schema_path,
-    defined $uri ? ( absolute_keyword_location => $uri ) : (),
+    #defined $uri ? ( absolute_keyword_location => $uri ) : (),
     error => @args ? sprintf($error_string, @args) : $error_string,
-  );
+  };
 
   return 0;
 }
@@ -843,7 +863,7 @@ sub abort {
 sub assert_keyword_type {
   my ($state, $schema, $type) = @_;
   abort($state, $state->{keyword}.' value is not a%s %s', ($type =~ /^[aeiou]/ ? 'n' : ''), $type)
-    if not _is_type(undef, $type, $schema->{$state->{keyword}});
+    if not is_type(undef, $type, $schema->{$state->{keyword}});
 }
 
 1;
