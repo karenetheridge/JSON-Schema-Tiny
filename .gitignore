@@ -1,0 +1,6 @@
+/.ackrc
+/.build/
+!/.gitignore
+/.latest
+/JSON-Schema-Tiny-*/
+/JSON-Schema-Tiny-*.tar.gz
