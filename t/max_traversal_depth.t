@@ -9,19 +9,20 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Test::More 0.88;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
-use JSON::Schema::Draft201909;
+use JSON::Schema::Tiny 'evaluate';
 
 use lib 't/lib';
 use Helper;
 
-my $js = JSON::Schema::Draft201909->new(max_traversal_depth => 6);
+$JSON::Schema::Tiny::MAX_TRAVERSAL_DEPTH = 6;
+
 cmp_deeply(
-  $js->evaluate(
+  evaluate(
     [ [ [ [ [ 1 ] ] ] ] ],
     {
       items => { '$ref' => '#' },
     },
-  )->TO_JSON,
+  ),
   {
     valid => false,
     errors => [
@@ -37,7 +38,7 @@ cmp_deeply(
 );
 
 cmp_deeply(
-  $js->evaluate(
+  evaluate(
     1,
     {
       '$defs' => {
@@ -50,7 +51,7 @@ cmp_deeply(
       },
       '$ref' => '#/$defs/loop_a',
     },
-  )->TO_JSON,
+  ),
   {
     valid => false,
     errors => [
@@ -66,23 +67,7 @@ cmp_deeply(
 );
 
 cmp_deeply(
-  $js->evaluate(
-    { foo => 1 },
-    {
-      '$defs' => { mydef => { '$id' => '/properties/foo' } },
-      properties => {
-        foo => {
-          '$ref' => '/properties/foo',
-        },
-      },
-    },
-  )->TO_JSON,
-  { valid => true },
-  'the seen counter does not confuse URI paths and fragments: /properties/foo vs #/properties/foo',
-);
-
-cmp_deeply(
-  $js->evaluate(
+  evaluate(
     { foo => 1 },
     {
       '$defs' => {
@@ -93,7 +78,7 @@ cmp_deeply(
         { additionalProperties => { '$ref' => '#/$defs/int' } },
       ],
     }
-  )->TO_JSON,
+  ),
   { valid => true },
   'the seen counter does not confuse two subschemas that both apply the same definition to the same instance location',
 );
