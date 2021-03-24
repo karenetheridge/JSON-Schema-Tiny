@@ -13,7 +13,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 
 use B;
-use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref);
+use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref);
 use Carp 'croak';
 use Storable 'dclone';
 use Exporter 5.57 'import';
@@ -863,7 +863,7 @@ sub abort {
 sub assert_keyword_type {
   my ($state, $schema, $type) = @_;
   abort($state, $state->{keyword}.' value is not a%s %s', ($type =~ /^[aeiou]/ ? 'n' : ''), $type)
-    if not is_type(undef, $type, $schema->{$state->{keyword}});
+    if not is_type($type, $schema->{$state->{keyword}});
 }
 
 1;
