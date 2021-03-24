@@ -20,7 +20,7 @@ BEGIN {
 }
 
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning';
-use Test::JSON::Schema::Acceptance 1.000; # XXX 1.004
+use Test::JSON::Schema::Acceptance 1.004;
 use JSON::Schema::Tiny 'evaluate';
 
 foreach my $env (qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING NO_TODO TEST_DIR NO_SHORT_CIRCUIT)) {
@@ -28,10 +28,12 @@ foreach my $env (qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING NO_TODO TE
 }
 note '';
 
+# TODO: test draft7 and draft202012 as well!
+
 my $accepter = Test::JSON::Schema::Acceptance->new(
   $ENV{TEST_DIR} ? (test_dir => $ENV{TEST_DIR}) : (specification => 'draft2019-09'),
   include_optional => 1,
-  # XXX skip_dir => 'optional/format',
+  skip_dir => 'optional/format',
   verbose => 1,
 );
 
@@ -55,13 +57,15 @@ $accepter->acceptance(
     die 'results inconsistent between short_circuit = false and true'
       if not $ENV{NO_SHORT_CIRCUIT} and ($result xor $result_short);
 
+
     # if any errors contain an exception, generate a warning so we can be sure
     # to count that as a failure (an exception would be caught and perhaps TODO'd).
     # (This might change if tests are added that are expected to produce exceptions.)
     foreach my $r ($result, ($ENV{NO_SHORT_CIRCUIT} ? () : $result_short)) {
-      warn 'evaluation generated an exception'
-        if grep $_->{error} =~ /^EXCEPTION/
-            && $_->{error} !~ /(max|min)imum value is not a number$/, # optional/bignum.json
+      map warn('evaluation generated an exception: '.$encoder->encode($_)),
+        grep +($_->{error} =~ /^EXCEPTION/
+            && $_->{error} !~ /but short_circuit is enabled/            # unevaluated*
+            && $_->{error} !~ /(max|min)imum value is not a number$/),  # optional/bignum.json
           @{$r->{errors}};
     }
 
@@ -71,13 +75,13 @@ $accepter->acceptance(
   # XXX skip_tests ...
   $ENV{NO_TODO} ? () : ( todo_tests => [
     { file => [
-        'optional/bignum.json',                     # TODO: see issue #10
+        'optional/bignum.json',                     # TODO: see JSD2 issue #10
         'optional/content.json',                    # removed in TJSA 1.003
-        'optional/ecmascript-regex.json',           # TODO: see issue #27
+        'optional/ecmascript-regex.json',           # TODO: see JSD2 issue #27
         'optional/float-overflow.json',             # see slack logs re multipleOf algo
       ] },
     # various edge cases that are difficult to accomodate
-    $Config{ivsize} < 8 || $Config{nvsize} < 8 ?            # see issue #10
+    $Config{ivsize} < 8 || $Config{nvsize} < 8 ?    # see JSD2 issue #10
       { file => 'const.json',
         group_description => 'float and integers are equal up to 64-bit representation limits',
         test_description => 'float is valid' }
