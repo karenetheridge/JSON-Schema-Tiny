@@ -10,18 +10,16 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
-use JSON::Schema::Draft201909;
+use JSON::Schema::Tiny 'evaluate';
 
 use lib 't/lib';
 use Helper;
-
-my $js = JSON::Schema::Draft201909->new;
 
 my $tests = sub {
   my ($char, $test_substr) = @_;
 
   cmp_deeply(
-    $js->evaluate($char, { pattern => '[a-z]' })->TO_JSON,
+    evaluate($char, { pattern => '[a-z]' }),
     {
       valid => false,
       errors => [
@@ -36,7 +34,7 @@ my $tests = sub {
   );
 
   cmp_deeply(
-    $js->evaluate($char, { pattern => '\w' })->TO_JSON,
+    evaluate($char, { pattern => '\w' }),
     {
       valid => true,
     },
