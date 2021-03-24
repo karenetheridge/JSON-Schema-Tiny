@@ -14,6 +14,8 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 
 use B;
 use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref);
+use Mojo::URL;
+use Mojo::JSON::Pointer;
 use Carp 'croak';
 use Storable 'dclone';
 use Exporter 5.57 'import';
@@ -35,11 +37,13 @@ sub evaluate {
   my $state = {
     depth => 0,
     data_path => '',
-    traversed_schema_path => '',        # the accumulated path up to the last $ref traversal
-    schema_path => '',                  # the rest of the path, since the last traversed $ref
+    traversed_schema_path => '',            # the accumulated path up to the last $ref traversal
+    canonical_schema_uri => Mojo::URL->new, # the canonical path of the last traversed $ref
+    schema_path => '',                      # the rest of the path, since the last traversed $ref
     errors => [],
     seen => {},
     short_circuit => $BOOLEAN_RESULT || $SHORT_CIRCUIT,
+    root_schema => $schema,
   };
 
   my $result;
@@ -131,23 +135,21 @@ sub _eval_keyword_schema {
 sub _eval_keyword_ref {
   my ($self, $data, $schema, $state) = @_;
 
+  return if not assert_keyword_type($state, $schema, 'string');
+
   abort($state, 'only same-document JSON pointers are supported in $ref')
-    if $schema->{'$ref'} !~ m{^#(/|$)};
+    if $schema->{'$ref'} !~ m{^#(/(?:[^~]|~[01])*|)$};
 
-# TODO: url-decode the fragment
-  my $url = Mojo::URL->new($schema->{'$ref'});
-  my $fragment = $url->fragment;
+  my $uri = Mojo::URL->new($schema->{'$ref'});
+  my $fragment = $uri->fragment;
 
-# TODO: apply json pointer against root of document (stored in $state)
-  my $subschema = $state->{root_schema}->get($fragment);
-  abort($state, 'unable to resolve ref "%s"', $schema->{'$ref'}) if not defined $subschema;
+  my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($fragment);
+  abort($state, 'unable to find resource %s', $uri) if not defined $subschema;
 
-  # for now, the base_uri of the schema is always '' (yes I know this is not an absolute uri)
-  # TODO: we need to track the base_uri of the schema resource that we are referencing.
-  # absolute_schema_path may not look anything like the contents of the $ref keyword.
   return _eval($data, $subschema,
     +{ %$state,
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$ref',
+      canonical_schema_uri => $uri,
       schema_path => '',
     });
 }
@@ -835,19 +837,20 @@ sub E {
   my ($state, $error_string, @args) = @_;
 
   # sometimes the keyword shouldn't be at the very end of the schema path
-  my $schema_path = delete $state->{_schema_path_rest}
-    // $state->{schema_path}.($state->{keyword} ? '/'.$state->{keyword} : '');
+  my $uri = $state->{canonical_schema_uri}->clone;
+  $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, $state->{keyword}, $state->{_schema_path_suffix}));
+  $uri->fragment(undef) if not length($uri->fragment);
 
-  #my $uri = $state->{canonical_schema_uri}->clone;
-  #$uri->fragment(($uri->fragment//'').$schema_path);
-  #$uri->fragment(undef) if not length($uri->fragment);
-  #undef $uri if $uri eq '' and $state->{traversed_schema_path}.$schema_path eq ''
-  #  or $uri eq '#'.$state->{traversed_schema_path}.$schema_path;
+  my $keyword_location = $state->{traversed_schema_path}
+    .jsonp($state->{schema_path}, $state->{keyword}, delete $state->{_schema_path_suffix});
+
+  undef $uri if $uri eq '' and $keyword_location eq ''
+    or ($uri->fragment // '') eq $keyword_location;
 
   push @{$state->{errors}}, {
     instanceLocation => $state->{data_path},
-    keywordLocation => $state->{traversed_schema_path}.$schema_path,
-    #defined $uri ? ( absolute_keyword_location => $uri ) : (),
+    keywordLocation => $keyword_location,
+    defined $uri ? ( absoluteKeywordLocation => $uri->to_string) : (),
     error => @args ? sprintf($error_string, @args) : $error_string,
   };
 
