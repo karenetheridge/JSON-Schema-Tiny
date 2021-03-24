@@ -771,7 +771,8 @@ sub get_type {
   return 'string' if $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
   return 'number' if !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
 
-  croak sprintf('ambiguous type for %s', $value);
+  croak sprintf('ambiguous type for %s',
+    JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 0)->encode($value));
 }
 
 # compares two arbitrary data payloads for equality, as per
@@ -815,7 +816,7 @@ sub is_elements_unique {
   my ($array, $equal_indices) = @_;
   foreach my $idx0 (0 .. $#{$array}-1) {
     foreach my $idx1 ($idx0+1 .. $#{$array}) {
-      if (_is_equal($array->[$idx0], $array->[$idx1])) {
+      if (is_equal($array->[$idx0], $array->[$idx1])) {
         push @$equal_indices, $idx0, $idx1 if defined $equal_indices;
         return 0;
       }
@@ -824,8 +825,9 @@ sub is_elements_unique {
   return 1;
 }
 
+# shorthand for creating and appending json pointers
 sub jsonp {
-  return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, @_);
+  return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, grep defined, @_);
 }
 
 # shorthand for creating error objects
@@ -853,17 +855,25 @@ sub E {
 }
 
 # creates an error object, but also aborts evaluation immediately
+# only this error is returned, because other errors on the stack might not actually be "real"
+# errors (consider if we were in the middle of evaluating a "not" or "if")
 sub abort {
   my ($state, $error_string, @args) = @_;
   E($state, 'EXCEPTION: '.$error_string, @args);
   die pop @{$state->{errors}};
 }
 
-# one common usecase of abort()
 sub assert_keyword_type {
   my ($state, $schema, $type) = @_;
-  abort($state, $state->{keyword}.' value is not a%s %s', ($type =~ /^[aeiou]/ ? 'n' : ''), $type)
-    if not is_type($type, $schema->{$state->{keyword}});
+  return 1 if is_type($type, $schema->{$state->{keyword}});
+  E($state, '%s value is not a%s %s', $state->{keyword}, ($type =~ /^[aeiou]/ ? 'n' : ''), $type);
+}
+
+sub assert_pattern {
+  my ($state, $pattern) = @_;
+  try { qr/$pattern/; }
+  catch ($e) { return E($state, $e); };
+  return 1;
 }
 
 1;
