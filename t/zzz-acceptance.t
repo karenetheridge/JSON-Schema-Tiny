@@ -72,8 +72,18 @@ $accepter->acceptance(
     $result->{valid};
   },
   @ARGV ? (tests => { file => \@ARGV }) : (),
-  # XXX skip_tests ...
-  $ENV{NO_TODO} ? () : ( todo_tests => [
+  todo_tests => [
+    { file => [ qw(
+        anchor.json
+        id.json
+        recursiveRef.json
+        refRemote.json
+        unevaluatedItems.json
+        unevaluatedProperties.json
+      ) ] },
+    { file => 'defs.json', group_description => 'valid definition' },
+    { file => 'ref.json', group_description => [ 'remote ref, containing refs itself', 'Recursive references between schemas' ] },
+    $ENV{NO_TODO} ? () : (
     { file => [
         'optional/bignum.json',                     # TODO: see JSD2 issue #10
         'optional/content.json',                    # removed in TJSA 1.003
@@ -91,7 +101,8 @@ $accepter->acceptance(
         group_description => 'invalid instance should not raise error when float division = inf',
         test_description => 'always invalid, but naive implementations may raise an overflow error' }
       : (),
-  ] ),
+    ),
+  ],
 );
 
 
