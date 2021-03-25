@@ -31,10 +31,10 @@ $accepter->acceptance(
     note 'result: ', $encoder->encode($result);
 
     note 'short-circuited result: ', ($encoder->encode($result_short) ? 'true' : 'false')
-      if not $ENV{NO_SHORT_CIRCUIT} and ($result xor $result_short);
+      if not $ENV{NO_SHORT_CIRCUIT} and ($result->{valid} xor $result_short->{valid});
 
     die 'results inconsistent between short_circuit = false and true'
-      if not $ENV{NO_SHORT_CIRCUIT} and ($result xor $result_short);
+      if not $ENV{NO_SHORT_CIRCUIT} and ($result->{valid} xor $result_short->{valid});
 
     # if any errors contain an exception, generate a warning so we can be sure
     # to count that as a failure (an exception would be caught and perhaps TODO'd).
@@ -46,7 +46,7 @@ $accepter->acceptance(
           @{$r->{errors}};
     }
 
-    $result;
+    $result->{valid};
   },
   @ARGV ? (tests => { file => \@ARGV }) : (),
   # optional prereqs
