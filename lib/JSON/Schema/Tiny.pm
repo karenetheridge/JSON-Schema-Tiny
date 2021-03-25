@@ -76,7 +76,8 @@ sub _eval {
   $state = { %$state };     # changes to $state should only affect subschemas, not parents
   delete $state->{keyword};
 
-  return E($state, 'maximum traversal depth exceeded') if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
+  abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
+    if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
 
 # XXX TODO: canonical_uri is always ''. can we detect loops?
 #  # find all schema locations in effect at this data path + canonical_uri combination
@@ -90,7 +91,7 @@ sub _eval {
 
   my $schema_type = get_type($schema);
   return $schema || E($state, 'subschema is false') if $schema_type eq 'boolean';
-  return E($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
+  abort($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
 
   my $result = 1;
 
@@ -126,7 +127,7 @@ sub _eval_keyword_schema {
 
   return if not assert_keyword_type($state, $schema, 'string');
 
-  return E($state, '$schema can only appear at the schema resource root')
+  return abort($state, '$schema can only appear at the schema resource root')
     if length($state->{schema_path});
 
   abort($state, 'custom $schema references are not supported')
@@ -147,7 +148,8 @@ sub _eval_keyword_ref {
   my $fragment = $uri->fragment;
 
   my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($fragment);
-  abort($state, 'unable to find resource %s', $uri) if not defined $subschema;
+  # thsi is not a runtime exception because all $refs must be local
+  abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
 
   return _eval($data, $subschema,
     +{ %$state,
@@ -174,10 +176,10 @@ sub _eval_keyword_type {
 
   if (is_plain_arrayref($schema->{type})) {
     foreach my $type (@{$schema->{type}}) {
-      return E($state, 'unrecognized type "%s"', $type//'<null>')
+      abort($state, 'unrecognized type "%s"', $type//'<null>')
         if not any { ($type//'') eq $_ } qw(null boolean object array string number integer);
     }
-    return E($state, '"type" values are not unique') if not is_elements_unique($schema->{type});
+    abort($state, '"type" values are not unique') if not is_elements_unique($schema->{type});
 
     foreach my $type (@{$schema->{type}}) {
       return 1 if is_type($type, $data);
@@ -185,7 +187,7 @@ sub _eval_keyword_type {
     return E($state, 'wrong type (expected one of %s)', join(', ', @{$schema->{type}}));
   }
   else {
-    return E($state, 'unrecognized type "%s"', $schema->{type}//'<null>')
+    abort($state, 'unrecognized type "%s"', $schema->{type}//'<null>')
       if not any { ($schema->{type}//'') eq $_ } qw(null boolean object array string number integer);
     return 1 if is_type($schema->{type}, $data);
     return E($state, 'wrong type (expected %s)', $schema->{type});
@@ -196,7 +198,7 @@ sub _eval_keyword_enum {
   my ($self, $data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'array');
-  return E($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
+  abort($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
 
   my @s; my $idx = 0;
   return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } @{$schema->{enum}};
@@ -218,7 +220,7 @@ sub _eval_keyword_multipleOf {
   my ($self, $data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'number');
-  return E($state, 'multipleOf value is not a positive number') if $schema->{multipleOf} <= 0;
+  abort($state, 'multipleOf value is not a positive number') if $schema->{multipleOf} <= 0;
 
   return 1 if not is_type('number', $data);
 
@@ -350,9 +352,9 @@ sub _eval_keyword_required {
   my ($self, $data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'array');
-  return E($state, '"required" element is not a string')
+  abort($state, '"required" element is not a string')
     if any { !is_type('string', $_) } @{$schema->{required}};
-  return E($state, '"required" values are not unique') if not is_elements_unique($schema->{required});
+  abort($state, '"required" values are not unique') if not is_elements_unique($schema->{required});
 
   return 1 if not is_type('object', $data);
 
@@ -365,12 +367,12 @@ sub _eval_keyword_dependentRequired {
   my ($self, $data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
-  return E($state, '"dependentRequired" property is not an array')
+  abort($state, '"dependentRequired" property is not an array')
     if any { !is_type('array', $schema->{dependentRequired}{$_}) }
       keys %{$schema->{dependentRequired}};
-  return E($state, '"dependentRequired" property element is not a string')
+  abort($state, '"dependentRequired" property element is not a string')
     if any { !is_type('string', $_) } map @$_, values %{$schema->{dependentRequired}};
-  return E($state, '"dependentRequired" property elements are not unique')
+  abort($state, '"dependentRequired" property elements are not unique')
     if any { !is_elements_unique($schema->{dependentRequired}{$_}) }
       keys %{$schema->{dependentRequired}};
 
@@ -387,8 +389,7 @@ sub _eval_keyword_dependentRequired {
 sub _eval_keyword_allOf {
   my ($self, $data, $schema, $state) = @_;
 
-  return if not assert_keyword_type($state, $schema, 'array');
-  return E($state, '"%s" array is empty') if not @{$schema->{$state->{keyword}}};
+  return if not assert_array_schemas($schema, $state);
 
   my @invalid;
   foreach my $idx (0 .. $#{$schema->{allOf}}) {
@@ -408,8 +409,7 @@ sub _eval_keyword_allOf {
 sub _eval_keyword_anyOf {
   my ($self, $data, $schema, $state) = @_;
 
-  return if not assert_keyword_type($state, $schema, 'array');
-  return E($state, '"%s" array is empty') if not @{$schema->{$state->{keyword}}};
+  return if not assert_array_schemas($schema, $state);
 
   my $valid = 0;
   my @errors;
@@ -428,8 +428,7 @@ sub _eval_keyword_anyOf {
 sub _eval_keyword_oneOf {
   my ($self, $data, $schema, $state) = @_;
 
-  return if not assert_keyword_type($state, $schema, 'array');
-  return E($state, '"%s" array is empty') if not @{$schema->{$state->{keyword}}};
+  return if not assert_array_schemas($schema, $state);
 
   my (@valid, @errors);
   foreach my $idx (0 .. $#{$schema->{oneOf}}) {
@@ -533,8 +532,7 @@ sub _eval_keyword_items {
 sub _eval_keyword_prefixItems {
   my ($self, $data, $schema, $state) = @_;
 
-  return if not assert_keyword_type($state, $schema, 'array');
-  return E($state, '"%s" array is empty') if not @{$schema->{$state->{keyword}}};
+  return if not assert_array_schemas($schema, $state);
 
   return 1 if not is_type('array', $data);
 
@@ -892,20 +890,21 @@ sub E {
 # errors (consider if we were in the middle of evaluating a "not" or "if")
 sub abort {
   my ($state, $error_string, @args) = @_;
-  E($state, 'EXCEPTION: '.$error_string, @args);
+  E($state, $error_string, @args);
   die pop @{$state->{errors}};
 }
 
+# one common usecase of abort()
 sub assert_keyword_type {
   my ($state, $schema, $type) = @_;
   return 1 if is_type($type, $schema->{$state->{keyword}});
-  E($state, '%s value is not a%s %s', $state->{keyword}, ($type =~ /^[aeiou]/ ? 'n' : ''), $type);
+  abort($state, '%s value is not a%s %s', $state->{keyword}, ($type =~ /^[aeiou]/ ? 'n' : ''), $type);
 }
 
 sub assert_pattern {
   my ($state, $pattern) = @_;
   try { qr/$pattern/; }
-  catch ($e) { return E($state, $e); };
+  catch ($e) { abort($state, $e); };
   return 1;
 }
 
@@ -915,6 +914,14 @@ sub assert_non_negative_integer {
   return if not assert_keyword_type($state, $schema, 'integer');
   return E($state, '%s value is not a non-negative integer', $state->{keyword})
     if $schema->{$state->{keyword}} < 0;
+  return 1;
+}
+
+sub assert_array_schemas {
+  my ($schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'array');
+  abort($state, '"%s" array is empty') if not @{$schema->{$state->{keyword}}};
   return 1;
 }
 
