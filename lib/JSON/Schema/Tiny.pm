@@ -110,8 +110,8 @@ sub _eval {
   ) {
     next if not exists $schema->{$keyword};
 
-    my $method = '_eval_keyword_'.($keyword =~ s/^\$//r);
-    $result = 0 if not __PACKAGE__->$method($data, $schema, +{ %$state, keyword => $keyword });
+    my $sub = __PACKAGE__->can('_eval_keyword_'.($keyword =~ s/^\$//r));
+    $result = 0 if not $sub->($data, $schema, +{ %$state, keyword => $keyword });
 
     last if not $result and $state->{short_circuit};
   }
@@ -133,7 +133,7 @@ sub _eval {
 # KEYWORD IMPLEMENTATIONS
 
 sub _eval_keyword_schema {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'string');
 
@@ -145,7 +145,7 @@ sub _eval_keyword_schema {
 }
 
 sub _eval_keyword_ref {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'string');
 
@@ -168,13 +168,13 @@ sub _eval_keyword_ref {
 }
 
 sub _eval_keyword_defs {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
   return if not assert_keyword_type($state, $schema, 'object');
   return 1;
 }
 
 sub _eval_keyword_type {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   if (is_plain_arrayref($schema->{type})) {
     foreach my $type (@{$schema->{type}}) {
@@ -197,7 +197,7 @@ sub _eval_keyword_type {
 }
 
 sub _eval_keyword_enum {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'array');
   abort($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
@@ -211,7 +211,7 @@ sub _eval_keyword_enum {
 }
 
 sub _eval_keyword_const {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return 1 if is_equal($data, $schema->{const}, my $s = {});
   return E($state, 'value does not match'
@@ -219,7 +219,7 @@ sub _eval_keyword_const {
 }
 
 sub _eval_keyword_multipleOf {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'number');
   abort($state, 'multipleOf value is not a positive number') if $schema->{multipleOf} <= 0;
@@ -232,7 +232,7 @@ sub _eval_keyword_multipleOf {
 }
 
 sub _eval_keyword_maximum {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
@@ -241,7 +241,7 @@ sub _eval_keyword_maximum {
 }
 
 sub _eval_keyword_exclusiveMaximum {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
@@ -250,7 +250,7 @@ sub _eval_keyword_exclusiveMaximum {
 }
 
 sub _eval_keyword_minimum {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
@@ -259,7 +259,7 @@ sub _eval_keyword_minimum {
 }
 
 sub _eval_keyword_exclusiveMinimum {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
@@ -268,7 +268,7 @@ sub _eval_keyword_exclusiveMinimum {
 }
 
 sub _eval_keyword_maxLength {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_non_negative_integer($schema, $state);
 
@@ -278,7 +278,7 @@ sub _eval_keyword_maxLength {
 }
 
 sub _eval_keyword_minLength {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_non_negative_integer($schema, $state);
 
@@ -288,7 +288,7 @@ sub _eval_keyword_minLength {
 }
 
 sub _eval_keyword_pattern {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'string');
   return if not assert_pattern($state, $schema->{pattern});
@@ -299,7 +299,7 @@ sub _eval_keyword_pattern {
 }
 
 sub _eval_keyword_maxItems {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_non_negative_integer($schema, $state);
 
@@ -309,7 +309,7 @@ sub _eval_keyword_maxItems {
 }
 
 sub _eval_keyword_minItems {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_non_negative_integer($schema, $state);
 
@@ -319,7 +319,7 @@ sub _eval_keyword_minItems {
 }
 
 sub _eval_keyword_uniqueItems {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'boolean');
   return 1 if not is_type('array', $data);
@@ -329,7 +329,7 @@ sub _eval_keyword_uniqueItems {
 }
 
 sub _eval_keyword_maxProperties {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_non_negative_integer($schema, $state);
 
@@ -340,7 +340,7 @@ sub _eval_keyword_maxProperties {
 }
 
 sub _eval_keyword_minProperties {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_non_negative_integer($schema, $state);
 
@@ -351,7 +351,7 @@ sub _eval_keyword_minProperties {
 }
 
 sub _eval_keyword_required {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'array');
   abort($state, '"required" element is not a string')
@@ -366,7 +366,7 @@ sub _eval_keyword_required {
 }
 
 sub _eval_keyword_dependentRequired {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
   abort($state, '"%s" property is not an array', $state->{keyword})
@@ -389,7 +389,7 @@ sub _eval_keyword_dependentRequired {
 }
 
 sub _eval_keyword_allOf {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_array_schemas($schema, $state);
 
@@ -409,7 +409,7 @@ sub _eval_keyword_allOf {
 }
 
 sub _eval_keyword_anyOf {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_array_schemas($schema, $state);
 
@@ -428,7 +428,7 @@ sub _eval_keyword_anyOf {
 }
 
 sub _eval_keyword_oneOf {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_array_schemas($schema, $state);
 
@@ -452,7 +452,7 @@ sub _eval_keyword_oneOf {
 }
 
 sub _eval_keyword_not {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return 1 if not _eval($data, $schema->{not},
     +{ %$state, schema_path => $state->{schema_path}.'/not', short_circuit => 1, errors => [] });
@@ -461,7 +461,7 @@ sub _eval_keyword_not {
 }
 
 sub _eval_keyword_if {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return 1 if not exists $schema->{then} and not exists $schema->{else};
   my $keyword = _eval($data, $schema->{if},
@@ -475,7 +475,7 @@ sub _eval_keyword_if {
 }
 
 sub _eval_keyword_dependentSchemas {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
 
@@ -496,7 +496,7 @@ sub _eval_keyword_dependentSchemas {
 }
 
 sub _eval_keyword_items {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   # TODO: for draft2020-12, reject the array form of items
   goto \&_eval_keyword_prefixItems if is_plain_arrayref($schema->{items});
@@ -524,7 +524,7 @@ sub _eval_keyword_items {
 }
 
 sub _eval_keyword_prefixItems {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_array_schemas($schema, $state);
 
@@ -577,7 +577,7 @@ sub _eval_keyword_prefixItems {
 }
 
 sub _eval_keyword_contains {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if exists $schema->{minContains}
     and not assert_non_negative_integer($schema, { %$state, keyword => 'minContains' });
@@ -623,7 +623,7 @@ sub _eval_keyword_contains {
 }
 
 sub _eval_keyword_properties {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
   return 1 if not is_type('object', $data);
@@ -653,7 +653,7 @@ sub _eval_keyword_properties {
 }
 
 sub _eval_keyword_patternProperties {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
 
@@ -688,7 +688,7 @@ sub _eval_keyword_patternProperties {
 }
 
 sub _eval_keyword_additionalProperties {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return 1 if not is_type('object', $data);
 
@@ -720,7 +720,7 @@ sub _eval_keyword_additionalProperties {
 }
 
 sub _eval_keyword_propertyNames {
-  my ($self, $data, $schema, $state) = @_;
+  my ($data, $schema, $state) = @_;
 
   return 1 if not is_type('object', $data);
 
