@@ -79,15 +79,14 @@ sub _eval {
   abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
     if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
 
-# XXX TODO: canonical_uri is always ''. can we detect loops?
-#  # find all schema locations in effect at this data path + canonical_uri combination
-#  # if any of them are absolute prefix of this schema location, we are in a loop.
-#  my $canonical_uri = canonical_schema_uri($state);
-#  my $schema_location = $state->{traversed_schema_path}.$state->{schema_path};
-#  abort($state, 'infinite loop detected (same location evaluated twice)')
-#    if grep substr($schema_location, 0, length) eq $_,
-#      keys %{$state->{seen}{$state->{data_path}}{$canonical_uri}};
-#  $state->{seen}{$state->{data_path}}{$canonical_uri}{$schema_location}++;
+  # find all schema locations in effect at this data path + canonical_uri combination
+  # if any of them are absolute prefix of this schema location, we are in a loop.
+  my $canonical_uri = canonical_schema_uri($state);
+  my $schema_location = $state->{traversed_schema_path}.$state->{schema_path};
+  abort($state, 'EXCEPTION: infinite loop detected (same location evaluated twice)')
+    if grep substr($schema_location, 0, length) eq $_,
+      keys %{$state->{seen}{$state->{data_path}}{$canonical_uri}};
+  $state->{seen}{$state->{data_path}}{$canonical_uri}{$schema_location}++;
 
   my $schema_type = get_type($schema);
   return $schema || E($state, 'subschema is false') if $schema_type eq 'boolean';
@@ -860,14 +859,22 @@ sub jsonp {
   return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, grep defined, @_);
 }
 
+# shorthand for finding the canonical uri of the present schema location
+sub canonical_schema_uri {
+  my ($state, @extra_path) = @_;
+
+  my $uri = $state->{canonical_schema_uri}->clone;
+  $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, @extra_path));
+  $uri->fragment(undef) if not length($uri->fragment);
+  $uri;
+}
+
 # shorthand for creating error objects
 sub E {
   my ($state, $error_string, @args) = @_;
 
   # sometimes the keyword shouldn't be at the very end of the schema path
-  my $uri = $state->{canonical_schema_uri}->clone;
-  $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, $state->{keyword}, $state->{_schema_path_suffix}));
-  $uri->fragment(undef) if not length($uri->fragment);
+  my $uri = canonical_schema_uri($state, $state->{keyword}, $state->{_schema_path_suffix});
 
   my $keyword_location = $state->{traversed_schema_path}
     .jsonp($state->{schema_path}, $state->{keyword}, delete $state->{_schema_path_suffix});

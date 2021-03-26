@@ -9,36 +9,13 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Test::More 0.96;
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Deep;
-use JSON::Schema::Draft201909;
+use JSON::Schema::Tiny 'evaluate';
 use lib 't/lib';
 use Helper;
 
-my $js = JSON::Schema::Draft201909->new(short_circuit => 0);
-my $js_short = JSON::Schema::Draft201909->new(short_circuit => 1);
-
 subtest 'multiple types' => sub {
-  my $result = $js->evaluate(true, { type => ['string','number'] });
-  ok(!$result, 'type returned false');
-  is($result, 1, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    [
-      all(
-        isa('JSON::Schema::Draft201909::Error'),
-        methods(
-          instance_location => '',
-          keyword_location => '/type',
-          absolute_keyword_location => undef,
-          error => 'wrong type (expected one of string, number)',
-        ),
-      ),
-    ],
-    'correct error generated from type',
-  );
-
-  cmp_deeply(
-    $result->TO_JSON,
+    evaluate(true, { type => ['string','number'] }),
     {
       valid => false,
       errors => [
@@ -49,33 +26,13 @@ subtest 'multiple types' => sub {
         },
       ],
     },
-    'result object serializes correctly',
+    'correct error generated from type',
   );
 };
 
 subtest 'multipleOf' => sub {
-  my $result = $js->evaluate(3, { multipleOf => 2 });
-  ok(!$result, 'multipleOf returned false');
-  is($result, 1, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    [
-      all(
-        isa('JSON::Schema::Draft201909::Error'),
-        methods(
-          instance_location => '',
-          keyword_location => '/multipleOf',
-          absolute_keyword_location => undef,
-          error => 'value is not a multiple of 2',
-        ),
-      ),
-    ],
-    'correct error generated from multipleOf',
-  );
-
-  cmp_deeply(
-    $result->TO_JSON,
+    evaluate(3, { multipleOf => 2 }),
     {
       valid => false,
       errors => [
@@ -86,33 +43,13 @@ subtest 'multipleOf' => sub {
         },
       ],
     },
-    'result object serializes correctly',
+    'correct error generated from multipleOf',
   );
 };
 
 subtest 'uniqueItems' => sub {
-  my $result = $js->evaluate([qw(a b c d c)], { uniqueItems => true });
-  ok(!$result, 'uniqueItems returned false');
-  is($result, 1, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    [
-      all(
-        isa('JSON::Schema::Draft201909::Error'),
-        methods(
-          instance_location => '',
-          keyword_location => '/uniqueItems',
-          absolute_keyword_location => undef,
-          error => 'items at indices 2 and 4 are not unique',
-        ),
-      ),
-    ],
-    'correct error generated from uniqueItems',
-  );
-
-  cmp_deeply(
-    $result->TO_JSON,
+    evaluate([qw(a b c d c)], { uniqueItems => true }),
     {
       valid => false,
       errors => [
@@ -123,48 +60,16 @@ subtest 'uniqueItems' => sub {
         },
       ],
     },
-    'result object serializes correctly',
+    'correct error generated from uniqueItems',
   );
 };
 
 subtest 'allOf, not, and false schema' => sub {
-  my $result = $js->evaluate(
-    my $data = 1,
-    my $schema = { allOf => [ true, false, { not => { not => false } } ] },
-  );
-  ok(!$result, 'allOf returned false');
-  is($result, 3, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    all(
-      array_each(isa('JSON::Schema::Draft201909::Error')),
-      [
-        methods(
-          instance_location => '',
-          keyword_location => '/allOf/1',
-          absolute_keyword_location => undef,
-          error => 'subschema is false',
-        ),
-        methods(
-          instance_location => '',
-          keyword_location => '/allOf/2/not',
-          absolute_keyword_location => undef,
-          error => 'subschema is valid',
-        ),
-        methods(
-          instance_location => '',
-          keyword_location => '/allOf',
-          absolute_keyword_location => undef,
-          error => 'subschemas 1, 2 are not valid',
-        ),
-      ],
+    evaluate(
+      my $data = 1,
+      my $schema = { allOf => [ true, false, { not => { not => false } } ] },
     ),
-    'correct errors with locations; did not collect errors inside "not"',
-  );
-
-  cmp_deeply(
-    $result->TO_JSON,
     {
       valid => false,
       errors => [
@@ -185,11 +90,12 @@ subtest 'allOf, not, and false schema' => sub {
         },
       ],
     },
-    'result object serializes correctly',
+    'correct errors with locations; did not collect errors inside "not"',
   );
 
+  local $JSON::Schema::Tiny::SHORT_CIRCUIT = 1;
   cmp_deeply(
-    $js_short->evaluate($data, $schema)->TO_JSON,
+    evaluate($data, $schema),
     {
       valid => false,
       errors => [
@@ -210,44 +116,12 @@ subtest 'allOf, not, and false schema' => sub {
 };
 
 subtest 'anyOf keeps all errors for false paths when invalid, discards errors for false paths when valid' => sub {
-  my $result = $js->evaluate(
-    my $data = 1,
-    my $schema = { anyOf => [ false, false ] },
-  );
-  ok(!$result, 'anyOf returned false');
-  is($result, 3, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    all(
-      array_each(isa('JSON::Schema::Draft201909::Error')),
-      [
-        methods(
-          instance_location => '',
-          keyword_location => '/anyOf/0',
-          absolute_keyword_location => undef,
-          error => 'subschema is false',
-        ),
-        methods(
-          instance_location => '',
-          keyword_location => '/anyOf/1',
-          absolute_keyword_location => undef,
-          error => 'subschema is false',
-        ),
-        methods(
-          instance_location => '',
-          keyword_location => '/anyOf',
-          absolute_keyword_location => undef,
-          error => 'no subschemas are valid',
-        ),
-      ],
+    evaluate(
+      my $data = 1,
+      my $schema = { anyOf => [ false, false ] },
     ),
-    'correct errors with locations; did not collect errors inside "not"',
-  );
-
-  cmp_deeply(
-    $js_short->evaluate($data, $schema)->TO_JSON,
-    {
+    my $result = {
       valid => false,
       errors => [
         {
@@ -267,43 +141,42 @@ subtest 'anyOf keeps all errors for false paths when invalid, discards errors fo
         },
       ],
     },
+    'correct errors with locations; did not collect errors inside "not"',
+  );
+
+  cmp_deeply(
+    do {
+      local $JSON::Schema::Tiny::SHORT_CIRCUIT = 1;
+      evaluate($data, $schema)
+    },
+    $result,
     'short-circuited results contain the same errors (short-circuiting not possible)',
   );
 
-
-  $result = $js->evaluate(1, { anyOf => [ false, true ], not => true });
-  ok(!$result, 'anyOf returned false');
-  is($result, 1, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    all(
-      array_each(isa('JSON::Schema::Draft201909::Error')),
-      [
-        methods(
-          instance_location => '',
-          keyword_location => '/not',
-          absolute_keyword_location => undef,
+    evaluate(1, { anyOf => [ false, true ], not => true }),
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '/not',
           error => 'subschema is valid',
-        ),
+        },
       ],
-    ),
+    },
     'did not collect errors from failure paths from successful anyOf',
   );
 
-  $result = $js->evaluate(1, { anyOf => [ false, true ] });
-  ok($result, 'anyOf returned true');
-  is($result, 0, 'got error count');
-
   cmp_deeply(
-    [ $result->errors ],
-    [],
+    evaluate(1, { anyOf => [ false, true ] }),
+    { valid => true },
     'no errors collected for true validation',
   );
 };
 
 subtest 'applicators with non-boolean subschemas, discarding intermediary errors - items' => sub {
-  my $result = $js->evaluate(
+  my $result = evaluate(
     my $data = [ 1, 2 ],
     my $schema = {
       items => {
@@ -314,9 +187,6 @@ subtest 'applicators with non-boolean subschemas, discarding intermediary errors
       },
     },
   );
-
-  ok(!$result, 'items returned false');
-  is($result, 6, 'got error count');
 
 # - evaluate /items on instance ''
 #   - evaluate /items on instance /0
@@ -354,65 +224,64 @@ subtest 'applicators with non-boolean subschemas, discarding intermediary errors
 # entire schema FAILS
 
   cmp_deeply(
-    [ $result->errors ],
-    all(
-      array_each(isa('JSON::Schema::Draft201909::Error')),
-      array_each(methods(absolute_keyword_location => undef)),
-      [
-        methods(
-          instance_location => '/0',
-          keyword_location => '/items/anyOf/0/minimum',
+    $result,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/0',
+          keywordLocation => '/items/anyOf/0/minimum',
           error => 'value is smaller than 2',
-        ),
-        methods(
-          instance_location => '/0',
-          keyword_location => '/items/anyOf/1/allOf/0/maximum',
+        },
+        {
+          instanceLocation => '/0',
+          keywordLocation => '/items/anyOf/1/allOf/0/maximum',
           error => 'value is larger than -1',
-        ),
-        methods(
-          instance_location => '/0',
-          keyword_location => '/items/anyOf/1/allOf/1/maximum',
+        },
+        {
+          instanceLocation => '/0',
+          keywordLocation => '/items/anyOf/1/allOf/1/maximum',
           error => 'value is larger than 0',
-        ),
-        methods(
-          instance_location => '/0',
-          keyword_location => '/items/anyOf/1/allOf',
+        },
+        {
+          instanceLocation => '/0',
+          keywordLocation => '/items/anyOf/1/allOf',
           error => 'subschemas 0, 1 are not valid',
-        ),
-        methods(
-          instance_location => '/0',
-          keyword_location => '/items/anyOf',
+        },
+        {
+          instanceLocation => '/0',
+          keywordLocation => '/items/anyOf',
           error => 'no subschemas are valid',
-        ),
-
+        },
         # these errors are discarded because /items/anyOf passes on instance /1
-        #methods(
-        #  instance_location => '/1',
-        #  keyword_location => '/items/anyOf/1/allOf/0/maximum',
+        #{
+        #  instanceLocation => '/1',
+        #  keywordLocation => '/items/anyOf/1/allOf/0/maximum',
         #  error => 'value is larger than -1',
-        #),
-        #methods(
-        #  instance_location => '/1',
-        #  keyword_location => '/items/anyOf/1/allOf/1/maximum',
+        #},
+        #{
+        #  instanceLocation => '/1',
+        #  keywordLocation => '/items/anyOf/1/allOf/1/maximum',
         #  error => 'value is larger than 0',
-        #),
-        #methods(
-        #  instance_location => '/1',
-        #  keyword_location => '/items/anyOf/1/allOf',
+        #},
+        #{
+        #  instanceLocation => '/1',
+        #  keywordLocation => '/items/anyOf/1/allOf',
         #  error => 'subschemas 0, 1 are not valid',
-        #),
-        methods(
-          instance_location => '',
-          keyword_location => '/items',
+        #},
+        {
+          instanceLocation => '',
+          keywordLocation => '/items',
           error => 'subschema is not valid against all items',
-        ),
+        },
       ],
-    ),
+    },
     'collected all errors from subschemas for failing branches only (passing branches discard errors)',
   );
 
+  local $JSON::Schema::Tiny::SHORT_CIRCUIT = 1;
   cmp_deeply(
-    $js_short->evaluate($data, $schema)->TO_JSON,
+    evaluate($data, $schema),
     {
       valid => false,
       errors => [
@@ -448,7 +317,7 @@ subtest 'applicators with non-boolean subschemas, discarding intermediary errors
 };
 
 subtest 'applicators with non-boolean subschemas, discarding intermediary errors - contains' => sub {
-  my $result = $js->evaluate(
+  my $result = evaluate(
     my $data = [
       { foo => 1 },
       { bar => 2 },
@@ -462,9 +331,6 @@ subtest 'applicators with non-boolean subschemas, discarding intermediary errors
       },
     },
   );
-
-  ok(!$result, 'evaluation returned false');
-  is($result, 1, 'got error count');
 
 # - evaluate /not on instance ''
 #   - evaluate subschema "true" - PASS
@@ -486,34 +352,33 @@ subtest 'applicators with non-boolean subschemas, discarding intermediary errors
 # entire schema FAILS
 
   cmp_deeply(
-    [ $result->errors ],
-    all(
-      array_each(isa('JSON::Schema::Draft201909::Error')),
-      array_each(methods(absolute_keyword_location => undef)),
-      [
-        methods(
-          instance_location => '',
-          keyword_location => '/not',
+    $result,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '/not',
           error => 'subschema is valid',
-        ),
+        },
         # these errors are discarded because /contains passes on instance /1
-        #methods(
-        #  instance_location => '/0/foo',
-        #  keyword_location => '/contains/properties/foo',
+        #{
+        #  instanceLocation => '/0/foo',
+        #  keywordLocation => '/contains/properties/foo',
         #  error => 'subschema is false',
-        #),
-        #methods(
-        #  instance_location => '/0',
-        #  keyword_location => '/contains/properties',
+        #},
+        #{
+        #  instanceLocation => '/0',
+        #  keywordLocation => '/contains/properties',
         #  error => 'not all properties are valid',
-        #),
+        #},
       ],
-    ),
+    },
     'collected all errors from subschemas for failing branches only (passing branches discard errors)',
   );
 
   cmp_deeply(
-    $js_short->evaluate($data, $schema)->TO_JSON,
+    evaluate($data, $schema),
     {
       valid => false,
       errors => [
@@ -529,7 +394,7 @@ subtest 'applicators with non-boolean subschemas, discarding intermediary errors
 };
 
 subtest 'errors with $refs' => sub {
-  my $result = $js->evaluate(
+  my $result = evaluate(
     [ { x => 1 }, { x => 2 }, { x => 3 } ],
     {
       '$defs' => {
@@ -553,9 +418,6 @@ subtest 'errors with $refs' => sub {
     },
   );
 
-  ok(!$result, 'evaluation returned false');
-  is($result, 11, 'got error count');
-
   # evaluation order:
   # /items/properties/x/$ref (mydef) /$ref (myint) /multipleOf
   # /items/properties/x/$ref (mydef) /type
@@ -563,85 +425,80 @@ subtest 'errors with $refs' => sub {
   # /items/properties/x/maximum
 
   cmp_deeply(
-    [ $result->errors ],
-    all(
-      array_each(isa('JSON::Schema::Draft201909::Error')),
-      [
-        methods(
-          instance_location => '/0/x',
-          keyword_location => '/items/properties/x/$ref/$ref/multipleOf',
-          absolute_keyword_location => '#/$defs/myint/multipleOf',
+    $result,
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '/0/x',
+          keywordLocation => '/items/properties/x/$ref/$ref/multipleOf',
+          absoluteKeywordLocation => '#/$defs/myint/multipleOf',
           error => 'value is not a multiple of 5',
-        ),
-        methods(
-          instance_location => '/0/x',
-          keyword_location => '/items/properties/x/$ref/minimum',
-          absolute_keyword_location => '#/$defs/mydef/minimum',
+        },
+        {
+          instanceLocation => '/0/x',
+          keywordLocation => '/items/properties/x/$ref/minimum',
+          absoluteKeywordLocation => '#/$defs/mydef/minimum',
           error => 'value is smaller than 5',
-        ),
-        methods(
-          instance_location => '/0',
-          keyword_location => '/items/properties',
-          absolute_keyword_location => undef,
+        },
+        {
+          instanceLocation => '/0',
+          keywordLocation => '/items/properties',
           error => 'not all properties are valid',
-        ),
-        methods(
-          instance_location => '/1/x',
-          keyword_location => '/items/properties/x/$ref/$ref/multipleOf',
-          absolute_keyword_location => '#/$defs/myint/multipleOf',
+        },
+        {
+          instanceLocation => '/1/x',
+          keywordLocation => '/items/properties/x/$ref/$ref/multipleOf',
+          absoluteKeywordLocation => '#/$defs/myint/multipleOf',
           error => 'value is not a multiple of 5',
-        ),
-        methods(
-          instance_location => '/1/x',
-          keyword_location => '/items/properties/x/$ref/minimum',
-          absolute_keyword_location => '#/$defs/mydef/minimum',
+        },
+        {
+          instanceLocation => '/1/x',
+          keywordLocation => '/items/properties/x/$ref/minimum',
+          absoluteKeywordLocation => '#/$defs/mydef/minimum',
           error => 'value is smaller than 5',
-        ),
-        methods(
-          instance_location => '/1',
-          keyword_location => '/items/properties',
-          absolute_keyword_location => undef,
+        },
+        {
+          instanceLocation => '/1',
+          keywordLocation => '/items/properties',
           error => 'not all properties are valid',
-        ),
-        methods(
-          instance_location => '/2/x',
-          keyword_location => '/items/properties/x/$ref/$ref/multipleOf',
-          absolute_keyword_location => '#/$defs/myint/multipleOf',
+        },
+        {
+          instanceLocation => '/2/x',
+          keywordLocation => '/items/properties/x/$ref/$ref/multipleOf',
+          absoluteKeywordLocation => '#/$defs/myint/multipleOf',
           error => 'value is not a multiple of 5',
-        ),
-        methods(
-          instance_location => '/2/x',
-          keyword_location => '/items/properties/x/$ref/minimum',
-          absolute_keyword_location => '#/$defs/mydef/minimum',
+        },
+        {
+          instanceLocation => '/2/x',
+          keywordLocation => '/items/properties/x/$ref/minimum',
+          absoluteKeywordLocation => '#/$defs/mydef/minimum',
           error => 'value is smaller than 5',
-        ),
-        methods(
-          instance_location => '/2/x',
-          keyword_location => '/items/properties/x/maximum',
-          absolute_keyword_location => undef,
+        },
+        {
+          instanceLocation => '/2/x',
+          keywordLocation => '/items/properties/x/maximum',
           error => 'value is larger than 2',
-        ),
-        methods(
-          instance_location => '/2',
-          keyword_location => '/items/properties',
-          absolute_keyword_location => undef,
+        },
+        {
+          instanceLocation => '/2',
+          keywordLocation => '/items/properties',
           error => 'not all properties are valid',
-        ),
-        methods(
-          instance_location => '',
-          keyword_location => '/items',
-          absolute_keyword_location => undef,
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => '/items',
           error => 'subschema is not valid against all items',
-        ),
+        },
       ],
-    ),
+    },
     'errors have correct absolute keyword location via $ref',
   );
 };
 
 subtest 'const and enum' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { foo => { a => { b => { c => { d => 1 } } } } },
       {
         properties => {
@@ -653,7 +510,7 @@ subtest 'const and enum' => sub {
           }
         },
       },
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
@@ -685,22 +542,7 @@ subtest 'const and enum' => sub {
 
 subtest 'exceptions' => sub {
   cmp_deeply(
-    $js->evaluate_json_string('[ 1, 2, 3, whargarbl ]', true)->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '',
-          keywordLocation => '',
-          error => re(qr/malformed JSON string/),
-        },
-      ],
-    },
-    'attempting to evaluate a json string returns the exception as an error',
-  );
-
-  cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { x => 'hello' },
       {
         allOf => [
@@ -708,12 +550,12 @@ subtest 'exceptions' => sub {
           { properties => { x => false } },
         ],
       }
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '',
+          instanceLocation => '/x',
           keywordLocation => '/allOf/0/properties/x',
           error => 'invalid schema type: number',
         },
@@ -723,7 +565,7 @@ subtest 'exceptions' => sub {
   );
 
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       1,
       {
         allOf => [
@@ -731,7 +573,7 @@ subtest 'exceptions' => sub {
           false,
         ],
       }
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
@@ -746,126 +588,28 @@ subtest 'exceptions' => sub {
   );
 };
 
-subtest 'errors after crossing multiple $refs using $id and $anchor' => sub {
+subtest 'unresolvable $ref to a local resource' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       1,
       {
-        '$id' => 'base.json',
-        '$defs' => {
-          def1 => {
-            '$comment' => 'canonical uri: "def1.json"',
-            '$id' => 'def1.json',
-            '$ref' => 'base.json#/$defs/myint',
-            type => 'integer',
-            maximum => -1,
-            minimum => 5,
-          },
-          myint => {
-            '$comment' => 'canonical uri: "def2.json"',
-            '$id' => 'def2.json',
-            '$ref' => 'base.json#my_not',
-            multipleOf => 5,
-            exclusiveMaximum => 1,
-          },
-          mynot => {
-            '$comment' => 'canonical uri: "base.json#/$defs/mynot"',
-            '$anchor' => 'my_not',
-            '$ref' => 'http://localhost:4242/object.json',
-            not => true,
-          },
-          myobject => {
-            '$id' => 'http://localhost:4242/object.json',
-            type => 'object',
-            anyOf => [ false ],
-          },
-        },
-        '$ref' => '#/$defs/def1',
-      },
-    )->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/$ref/$ref/$ref/type',
-          absoluteKeywordLocation => 'http://localhost:4242/object.json#/type',
-          error => 'wrong type (expected object)',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/$ref/$ref/$ref/anyOf/0',
-          absoluteKeywordLocation => 'http://localhost:4242/object.json#/anyOf/0',
-          error => 'subschema is false',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/$ref/$ref/$ref/anyOf',
-          absoluteKeywordLocation => 'http://localhost:4242/object.json#/anyOf',
-          error => 'no subschemas are valid',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/$ref/$ref/not',
-          absoluteKeywordLocation => 'base.json#/$defs/mynot/not',
-          error => 'subschema is valid',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/$ref/multipleOf',
-          absoluteKeywordLocation => 'def2.json#/multipleOf',
-          error => 'value is not a multiple of 5',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/$ref/exclusiveMaximum',
-          absoluteKeywordLocation => 'def2.json#/exclusiveMaximum',
-          error => 'value is equal to or larger than 1',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/maximum',
-          absoluteKeywordLocation => 'def1.json#/maximum',
-          error => 'value is larger than -1',
-        },
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref/minimum',
-          absoluteKeywordLocation => 'def1.json#/minimum',
-          error => 'value is smaller than 5',
-        },
-      ],
-    },
-    'errors have correct absolute keyword location via $ref',
-  );
-};
-
-subtest 'unresolvable $ref' => sub {
-  my $js = JSON::Schema::Draft201909->new;
-
-  cmp_deeply(
-    $js->evaluate(
-      1,
-      {
-        '$id' => 'http://localhost:4242/foo/bar/top_id.json',
-        '$ref' => '/baz/myint.json',
+        '$ref' => '#/$defs/myint',
         '$defs' => {
           myint => {
-            '$id' => '/baz/myint.json',
-            '$ref' => 'does-not-exist.json',
+            '$ref' => '#/$defs/does-not-exist',
           },
         },
         anyOf => [ false ],
       },
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
         {
           instanceLocation => '',
           keywordLocation => '/$ref/$ref',
-          absoluteKeywordLocation => 'http://localhost:4242/baz/myint.json#/$ref',
-          error => 'EXCEPTION: unable to find resource http://localhost:4242/baz/does-not-exist.json',
+          absoluteKeywordLocation => '#/$defs/myint/$ref',
+          error => 'EXCEPTION: unable to find resource #/$defs/does-not-exist',
         },
       ],
     },
@@ -873,26 +617,9 @@ subtest 'unresolvable $ref' => sub {
   );
 };
 
-subtest 'unresolvable $ref to plain-name fragment' => sub {
-  cmp_deeply(
-    $js->evaluate(1, { '$ref' => '#nowhere' })->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '',
-          keywordLocation => '/$ref',
-          error => 'EXCEPTION: unable to find resource #nowhere',
-        },
-      ],
-    },
-    'properly handled a bad $ref to an anchor',
-  );
-};
-
 subtest 'abort due to a schema error' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       1,
       {
         oneOf => [
@@ -901,7 +628,7 @@ subtest 'abort due to a schema error' => sub {
           { type => 'whargarbl' },
         ],
       }
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
@@ -918,7 +645,7 @@ subtest 'abort due to a schema error' => sub {
 
 subtest 'sorted property names' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { foo => 1, bar => 1, baz => 1, hello => 1 },
       {
         properties => {
@@ -927,7 +654,7 @@ subtest 'sorted property names' => sub {
         },
         additionalProperties => false,
       }
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
@@ -969,12 +696,11 @@ subtest 'sorted property names' => sub {
 
 subtest 'bad regex in schema' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       {
         my_pattern => 'foo',
-        my_patternProperties => { foo => 1 },
       },
-      {
+      my $schema = {
         type => 'object',
         properties => {
           my_pattern => {
@@ -992,45 +718,51 @@ subtest 'bad regex in schema' => sub {
           },
         },
       },
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '',
+          instanceLocation => ignore, # not important - JST errors at runtime, JSD2 at traverse time
           keywordLocation => '/properties/my_pattern/pattern',
           error => re(qr/^Unmatched \( in regex/),
         },
+      ],
+    },
+    'bad "pattern" regex is properly noted in error',
+  );
+
+  cmp_deeply(
+    evaluate(
+      {
+        my_patternProperties => { foo => 1 },
+      },
+      $schema,
+    ),
+    {
+      valid => false,
+      errors => [
         {
-          instanceLocation => '',
+          instanceLocation => ignore, # not important - JST errors at runtime, JSD2 at traverse time
           keywordLocation => '/properties/my_patternProperties/patternProperties/(',
           error => re(qr/^Unmatched \( in regex/),
         },
         # Note no error for missing IsFoo
       ],
     },
-    'bad "pattern" and "patternProperties" regexes are properly noted in error',
+    'bad "patternProperties" regex is properly noted in error',
   );
 
-  my $schema = {
-    type => 'object',
-    properties => {
-      my_runtime_pattern => {
-        type => 'string',
-        pattern => '\p{main::IsFoo}', # qr/$pattern/ will not find this error, but m/$pattern/ will
-      },
-    },
-  };
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { my_runtime_pattern => 'foo' },
       $schema,
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '',
+          instanceLocation => '', # not important - JST and JSD2 both error at runtime
           keywordLocation => '',
           # in 5.28 and earlier: Can't find Unicode property definition "IsFoo"
           # in 5.30 and later:   Unknown user-defined property name \p{main::IsFoo}
@@ -1038,17 +770,17 @@ subtest 'bad regex in schema' => sub {
         },
       ],
     },
-    'bad "pattern" regex is properly noted in error, but locations are lost because this is an exceptional error',
+    'bad "pattern" regex is properly noted in error',
   );
 
   no warnings 'once';
   *IsFoo = sub { "0066\n006F\n" }; # accepts 'f', 'o'
 
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { my_runtime_pattern => 'foo' },
       $schema,
-    )->TO_JSON,
+    ),
     {
       valid => true,
     },
@@ -1058,7 +790,7 @@ subtest 'bad regex in schema' => sub {
 
 subtest 'JSON pointer escaping' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { '{}' => { 'my~tilde/slash-property' => 1 } },
       my $schema = {
         '$defs' => {
@@ -1080,7 +812,7 @@ subtest 'JSON pointer escaping' => sub {
         },
         '$ref' => '#/$defs/mydef',
       },
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => my $errors = [
@@ -1138,10 +870,10 @@ subtest 'JSON pointer escaping' => sub {
   );
 
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { '{}' => { 'my~tilde/slash-property' => 1 } },
       $schema->{'$defs'}{mydef},
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
@@ -1156,7 +888,7 @@ subtest 'JSON pointer escaping' => sub {
   );
 
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       { '{}' => { 'my~tilde/slash-property' => 1 } },
       {
         '$defs' => {
@@ -1164,7 +896,7 @@ subtest 'JSON pointer escaping' => sub {
             properties => {
               '{}' => {
                 patternProperties => {
-                  '(' => { minimum => 2 },  # this is a broken regex
+                  'a{' => { minimum => 2 }, # this is a broken regex
                 },
               },
             },
@@ -1172,14 +904,15 @@ subtest 'JSON pointer escaping' => sub {
         },
         '$ref' => '#/$defs/mydef',
       },
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
         {
-          instanceLocation => '',
-          keywordLocation => '/$defs/mydef/properties/{}/patternProperties/(',
-          error => re(qr{^\QUnmatched ( in regex; marked by <-- HERE in m/( <-- HERE\E}),
+          instanceLocation => ignore, # not important - JST errors at runtime, JSD2 at traverse time
+          keywordLocation => '/$ref/properties/{}/patternProperties/a{',
+          absoluteKeywordLocation => '#/$defs/mydef/properties/%7B%7D/patternProperties/a%7B',
+          error => re(qr!^\QUnescaped left brace in regex is illegal here in regex; marked by <-- HERE in m/a{ <-- HERE\E!),
         },
       ],
     },
@@ -1190,7 +923,7 @@ subtest 'JSON pointer escaping' => sub {
 
 subtest 'invalid $schema' => sub {
   cmp_deeply(
-    $js->evaluate(
+    evaluate(
       1,
       {
         allOf => [
@@ -1198,7 +931,7 @@ subtest 'invalid $schema' => sub {
           { '$schema' => 'https://json-schema.org/draft/2019-09/schema' },
         ],
       },
-    )->TO_JSON,
+    ),
     {
       valid => false,
       errors => [
@@ -1211,86 +944,17 @@ subtest 'invalid $schema' => sub {
     },
     '$schema can only appear at the root of a schema, when there is no canonical URI',
   );
-
-  cmp_deeply(
-    $js->evaluate(
-      1,
-      {
-        '$id' => 'https://bloop.com',
-        allOf => [
-          true,
-          { '$schema' => 'https://json-schema.org/draft/2019-09/schema' },
-        ],
-      },
-    )->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '',
-          keywordLocation => '/allOf/1/$schema',
-          absoluteKeywordLocation => 'https://bloop.com#/allOf/1/$schema',
-          error => '$schema can only appear at the schema resource root',
-        },
-      ],
-    },
-    '$schema can only appear where the canonical URI has no fragment, when there is a canonical URI',
-  );
-
-  cmp_deeply(
-    $js->evaluate(
-      1,
-      {
-        '$id' => 'https://bloop2.com',
-        allOf => [
-          true,
-          {
-            '$id' => 'https://newid.com',
-            '$schema' => 'https://json-schema.org/draft/2019-09/schema',
-          },
-        ],
-      },
-    )->TO_JSON,
-    {
-      valid => true,
-    },
-    '$schema can appear adjacent to any $id',
-  );
-
-  cmp_deeply(
-    $js->evaluate(
-      1,
-      {
-        '$id' => 'https://bloop3.com',
-        '$defs' => {
-          my_def => {
-            '$schema' => 'https://json-schema.org/draft/2019-09/schema',
-          },
-        },
-        '$ref' => '#/$defs/my_def',
-      },
-    )->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '',
-          keywordLocation => '/$defs/my_def/$schema',
-          absoluteKeywordLocation => 'https://bloop3.com#/$defs/my_def/$schema',
-          error => '$schema can only appear at the schema resource root',
-        },
-      ],
-    },
-    'this is still not a resource root, even in a $ref target',
-  );
 };
 
 subtest 'absoluteKeywordLocation' => sub {
   cmp_deeply(
-    JSON::Schema::Draft201909->new(max_traversal_depth => 1)->evaluate(
-      [ [ 1 ] ],
-      { items => { '$ref' => '#' } },
-    )->TO_JSON,
+    do {
+      local $JSON::Schema::Tiny::MAX_TRAVERSAL_DEPTH = 1;
+      evaluate(
+        [ [ 1 ] ],
+        { items => { '$ref' => '#' } },
+      )
+    },
     {
       valid => false,
       errors => [
@@ -1306,34 +970,18 @@ subtest 'absoluteKeywordLocation' => sub {
   );
 
   cmp_deeply(
-    $js->evaluate(1, { '$ref' => '#does_not_exist' })->TO_JSON,
+    evaluate(1, { '$ref' => '#/does_not_exist' }),
     {
       valid => false,
       errors => [
         {
           instanceLocation => '',
           keywordLocation => '/$ref',
-          error => 'EXCEPTION: unable to find resource #does_not_exist',
+          error => 'EXCEPTION: unable to find resource #/does_not_exist',
         },
       ],
     },
     'absoluteKeywordLocation is not included when the path equals keywordLocation, even if a $ref is present',
-  );
-
-  $js->add_schema(false);
-  cmp_deeply(
-    $js->evaluate(1, '#')->TO_JSON,
-    {
-      valid => false,
-      errors => [
-        {
-          instanceLocation => '',
-          keywordLocation => '',
-          error => 'subschema is false',
-        },
-      ],
-    },
-    'absoluteKeywordLocation is never "#"',
   );
 };
 
