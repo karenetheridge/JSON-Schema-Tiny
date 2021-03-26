@@ -96,7 +96,7 @@ sub _eval {
 
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($schema $ref $defs definitions),
+    qw($schema $ref $defs),
     # VALIDATOR KEYWORDS
     qw(type enum const
       multipleOf maximum exclusiveMaximum minimum exclusiveMinimum
@@ -104,8 +104,8 @@ sub _eval {
       maxItems minItems uniqueItems
       maxProperties minProperties required dependentRequired),
     # APPLICATOR KEYWORDS
-    qw(allOf anyOf oneOf not if dependentSchemas dependencies
-      items prefixItems contains
+    qw(allOf anyOf oneOf not if dependentSchemas
+      items contains
       properties patternProperties additionalProperties propertyNames),
   ) {
     next if not exists $schema->{$keyword};
@@ -114,6 +114,17 @@ sub _eval {
     $result = 0 if not __PACKAGE__->$method($data, $schema, +{ %$state, keyword => $keyword });
 
     last if not $result and $state->{short_circuit};
+  }
+
+  # UNSUPPORTED KEYWORDS
+  foreach my $keyword (
+    # CORE KEYWORDS
+    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary $dynamicAnchor $dynamicRef definitions),
+    # APPLICATOR KEYWORDS
+    qw(dependencies unevaluatedItems unevaluatedProperties),
+  ) {
+    next if not exists $schema->{$keyword};
+    abort({ %$state, keyword => $keyword }, 'keyword not supported');
   }
 
   return $result;
@@ -130,9 +141,7 @@ sub _eval_keyword_schema {
     if length($state->{schema_path});
 
   abort($state, 'custom $schema references are not supported')
-    if $schema->{'$schema'} ne 'http://json-schema.org/draft-07/schema#'
-      and $schema->{'$schema'} ne 'https://json-schema.org/draft/2019-09/schema'
-      and $schema->{'$schema'} ne 'https://json-schema.org/draft/2020-20/schema';
+    if $schema->{'$schema'} ne 'https://json-schema.org/draft/2019-09/schema';
 }
 
 sub _eval_keyword_ref {
@@ -163,9 +172,6 @@ sub _eval_keyword_defs {
   return if not assert_keyword_type($state, $schema, 'object');
   return 1;
 }
-
-# XXX remove and add back later for draft7
-sub _eval_keyword_definitions { goto \&_eval_keyword_defs }
 
 sub _eval_keyword_type {
   my ($self, $data, $schema, $state) = @_;
@@ -487,18 +493,6 @@ sub _eval_keyword_dependentSchemas {
 
   return E($state, 'not all subschemas are valid') if not $valid;
   return 1;
-}
-
-# XXX remove this and add it later, when we support draft 3-7
-sub _eval_keyword_dependencies {
-  my ($self, $data, $schema, $state) = @_;
-
-  return if not assert_keyword_type($state, $schema, 'object');
-
-  goto \&_eval_keyword_dependentRequired
-    if any { is_type('array', $schema->{dependencies}{$_}) } keys %{$schema->{dependencies}};
-
-  goto \&_eval_keyword_dependentSchemas;
 }
 
 sub _eval_keyword_items {
