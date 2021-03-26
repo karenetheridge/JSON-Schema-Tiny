@@ -949,158 +949,132 @@ __END__
 =head1 DESCRIPTION
 
 This module aims to be a slimmed-down L<JSON Schema|https://json-schema.org/> evaluator and
-validator, supporting the most popular keywords used in the most recent versions of the draft
-specification. (See L</CAVEATS> below for exclusions.)
+validator, supporting the most popular keywords used in the draft 2019-09 version of the
+specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
+
+=head1 FUNCTIONS
+
+=head2 evaluate
+
+  my $result = evaluate($data, $schema);
+
+Evaluates the provided instance data against the known schema document.
+
+The data is in the form of an unblessed nested Perl data structure representing any type that JSON
+allows: null, boolean, string, number, object, array. (See L</TYPES> below.)
+
+The schema must represent a JSON Schema that respects the Draft 2019-09 meta-schema at
+L<https://json-schema.org/draft/2019-09/schema>, in the form of a Perl data structure, such as what is returned from a JSON decode operation.
+
+With default configuration values, the return value is a hashref indicating the validation success
+or failure, plus (when validation failed), an arrayref of error strings in standard JSON Schema
+format. For example:
+
+running:
+
+  $result = evaluate(1, { type => 'number' });
+
+C<$result> is:
+
+  { valid => true }
+
+running:
+
+  $result = evaluate(1, { type => 'number', multipleOf => 2 });
+
+C<$result> is:
+
+  {
+    valid => false,
+    errors => [
+      {
+        instanceLocation => '',
+        keywordLocation => '/multipleOf',
+        error => 'value is not a multiple of 2',
+      },
+    ],
+  }
+
+When L</C<$BOOLEAN_RESULT>> is true, the return value is a boolean (indicating evaluation success or
+failure).
 
 =head1 OPTIONS
 
-=head1 CAVEATS
+All options are available as package-scoped global variables. Use L<local|perlfunc/local> to
+configure them for a local scope.
 
-=head2 UNSUPPORTED FEATURES
+=head2 C<$BOOLEAN_RESULT>
+
+When true, L</evaluate> will return a true or false result only, with no error strings. This enables
+short-circuit mode internally as this cannot effect results except get there faster. Defaults to false.
+
+=head2 C<$SHORT_CIRCUIT>
+
+When true, L</evaluate> will return from evaluating each subschema as soon as a true or false result
+can be determined. When C<$BOOLEAN_RESULT> is false, an incomplete list of errors will be returned.
+Defaults to false.
+
+=head2 C<$MAX_TRAVERSAL_DEPTH>
+
+The maximum number of levels deep a schema traversal may go, before evaluation is halted. This is to
+protect against accidental infinite recursion, such as from two subschemas that each reference each
+other, or badly-written schemas that could be optimized. Defaults to 50.
+
+=head1 UNSUPPORTED JSON-SCHEMA FEATURES
+
+Unlike L<JSON::Schema::Draft201909>, this is not a complete implementation of the JSON Schema
+specification. Some features and keywords are left unsupported in order to keep the code small and
+the execution fast. These features are not available:
 
 =for :list
-* annotation collection (first added in draft 2019-09)
-* C<$ref>erences to other documents, or anchor URIs (that is: only C<$ref>s to local paths are
-supported: the target must be a fragment-only URI-reference with a json-pointer)
+* any output format other than C<flag> (when C<$BOOLEAN_RESULT> is true) or C<basic> (when it is
+  false)
+* annotations in successful evaluation results (see
+  L<Annotations|https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.7.7>).
+* use of C<$ref> other than to locations in the local schema in json-pointer format (e.g.
+  C<#/path/to/property>). This means that references to external documents, either those available
+  locally or on the network, are not permitted.
 
-=head2 UNSUPPORTED KEYWORDS
-
-All keywords are supported from drafts 7, 2019-09 and 2020-20, with the following exceptions (in
-most cases, the keyword will simply be ignored, unless strict mode is enabled):
+In addition, these keywords are implemented only partially or not at all (their presence in a schema
+will result in an error):
 
 =for :list
-* C<$schema> - only accepted if set to one of the draft7, draft201909, draft201212 metaschemas
+* C<$schema> - only accepted if set to the draft201909 metaschema URI
+  ("C<https://json-schema.org/draft/2019-09/schema>")
 * C<$id>
-* C<$anchor> (added in draft 2019-09) (although support may be added later)
-* C<$recursiveAnchor> and C<$recursiveRef> (only exists in draft 2019-09)
-* C<$dynamicAnchor> and C<$dynamicRef> (added in draft 2020-20)
-* C<$vocabulary> (added in draft 2019-09)
-* C<unevaluatedItems> and C<unevaluatedProperties> (added in draft 2019-09)
-* C<format> (although some support may be added later)
+* C<$anchor>
+* C<$recursiveAnchor> and C<$recursiveRef>
+* C<$vocabulary>
+* C<unevaluatedItems> and C<unevaluatedProperties> (which require annotation support)
+* C<format>
+
+=head1 LIMITATIONS
+
+=head2 Types
+
+Perl is a more loosely-typed language than JSON. This module delves into a value's internal
+representation in an attempt to derive the true "intended" type of the value. However, if a value is
+used in another context (for example, a numeric value is concatenated into a string, or a numeric
+string is used in an arithmetic operation), additional flags can be added onto the variable causing
+it to resemble the other type. This should not be an issue if data validation is occurring
+immediately after decoding a JSON payload.
+
+For more information, see L<Cpanel::JSON::XS/MAPPING>.
+
+=head1 SECURITY CONSIDERATIONS
+
+The C<pattern> and C<patternProperties> keywords, and the C<regex> format validator,
+evaluate regular expressions from the schema.
+No effort is taken (at this time) to sanitize the regular expressions for embedded code or
+potentially pathological constructs that may pose a security risk, either via denial of service
+or by allowing exposure to the internals of your application. B<DO NOT USE SCHEMAS FROM UNTRUSTED
+SOURCES.>
 
 =head1 SEE ALSO
 
 =for :list
 * L<JSON::Schema::Draft201909>: a more spec-compliant JSON Schema evaluator
+* L<Test::JSON::Schema::Acceptance>
 * L<https://json-schema.org>
-
-
-
-=head1 UNSUPPORTED KEYWORDS
-
-Use of the following keywords will be ignored (unless strict mode is enabled, in which case their
-presence will constitute an error):
-
-=for :list
-
-* from the Core vocabulary: C<$id>, C<$recursiveRef>,
-
-keyword is in 7, 201909, 202012 unless otherwise stated
-
-$anchor  (201909, 202012)
-$comment
-$defs (201909, 202012)
-$dynamicAnchor (202012)
-$dynamicRef (202012)
-$id
-$recursiveAnchor (201909)
-$recursiveRef (201909)
-$ref
-$schema
-$vocabulary (201909, 202012)
-
-201909 applicator:
-additionalItems
-additionalProperties
-allOf
-anyOf
-contains
-dependentSchemas
-else
-if
-items - both schema and list-based in 201909; only schema-based in 202012. so support both.
-not
-oneOf
-patternProperties
-properties
-propertyNames
-then
-unevaluatedItems NOT SUPPORTED YET
-unevaluatedProperties NOT SUPPORTED YET
-
-201909 validator:
-const
-dependentRequired
-enum
-exclusiveMaximum
-exclusiveMinimum
-maxContains
-maxItems
-maxLength
-maxProperties
-maximum
-minContains
-minItems
-minLength
-minProperties
-minimum
-multipleOf
-pattern
-required
-type
-uniqueItems
-
-201909 content:
-contentEncoding
-contentMediaType
-contentSchema
-
-
-201909 format:
-format
-
-201909 meta-data:
-default
-deprecated
-description
-examples
-readOnly
-title
-writeOnly
-
-201909 validator:
-const
-dependentRequired
-enum
-exclusiveMaximum
-exclusiveMinimum
-maxContains
-maxItems
-maxLength
-maxProperties
-maximum
-minContains
-minItems
-minLength
-minProperties
-minimum
-multipleOf
-pattern
-required
-type
-uniqueItems
-
-additional draft7 keywords:
-dependencies
-definitions
-
-additional 202012 keywords:
-prefixItems - some overlap with array-based items from 201909.
-$dynamicAnchor
-$dynamicRef
-
-
-
-
 
 =cut
