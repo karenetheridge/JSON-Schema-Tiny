@@ -164,11 +164,8 @@ sub _eval_keyword_defs {
   return 1;
 }
 
-sub _eval_keyword_definitions {
-  my ($self, $data, $schema, $state) = @_;
-  assert_keyword_type($state, $schema, 'object');
-  return 1;
-}
+# XXX remove and add back later for draft7
+sub _eval_keyword_definitions { goto \&_eval_keyword_defs }
 
 sub _eval_keyword_type {
   my ($self, $data, $schema, $state) = @_;
@@ -366,20 +363,20 @@ sub _eval_keyword_dependentRequired {
   my ($self, $data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
-  abort($state, '"dependentRequired" property is not an array')
-    if any { !is_type('array', $schema->{dependentRequired}{$_}) }
-      keys %{$schema->{dependentRequired}};
-  abort($state, '"dependentRequired" property element is not a string')
-    if any { !is_type('string', $_) } map @$_, values %{$schema->{dependentRequired}};
-  abort($state, '"dependentRequired" property elements are not unique')
-    if any { !is_elements_unique($schema->{dependentRequired}{$_}) }
-      keys %{$schema->{dependentRequired}};
+  abort($state, '"%s" property is not an array', $state->{keyword})
+    if any { !is_type('array', $schema->{$state->{keyword}}{$_}) }
+      keys %{$schema->{$state->{keyword}}};
+  abort($state, '"%s" property element is not a string', $state->{keyword})
+    if any { !is_type('string', $_) } map @$_, values %{$schema->{$state->{keyword}}};
+  abort($state, '"%s" property elements are not unique', $state->{keyword})
+    if any { !is_elements_unique($schema->{$state->{keyword}}{$_}) }
+      keys %{$schema->{$state->{keyword}}};
 
   return 1 if not is_type('object', $data);
 
   my @missing = grep
-    +(exists $data->{$_} && any { !exists $data->{$_} } @{ $schema->{dependentRequired}{$_} }),
-    keys %{$schema->{dependentRequired}};
+    +(exists $data->{$_} && any { !exists $data->{$_} } @{ $schema->{$state->{keyword}}{$_} }),
+    keys %{$schema->{$state->{keyword}}};
 
   return 1 if not @missing;
   return E($state, 'missing propert%s: %s', @missing > 1 ? 'ies' : 'y', join(', ', sort @missing));
@@ -479,10 +476,10 @@ sub _eval_keyword_dependentSchemas {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (sort keys %{$schema->{dependentSchemas}}) {
+  foreach my $property (sort keys %{$schema->{$state->{keyword}}}) {
     next if not exists $data->{$property}
-      or _eval($data, $schema->{dependentSchemas}{$property},
-        +{ %$state, schema_path => jsonp($state->{schema_path}, 'dependentSchemas', $property) });
+      or _eval($data, $schema->{$state->{keyword}}{$property},
+        +{ %$state, schema_path => jsonp($state->{schema_path}, $state->{keyword}, $property) });
 
     $valid = 0;
     last if $state->{short_circuit};
@@ -492,12 +489,16 @@ sub _eval_keyword_dependentSchemas {
   return 1;
 }
 
+# XXX remove this and add it later, when we support draft 3-7
 sub _eval_keyword_dependencies {
   my ($self, $data, $schema, $state) = @_;
 
-  # TODO call into dependentSchemas or dependentRequired
-  # also set $schema->{keyword}
-  die;
+  return if not assert_keyword_type($state, $schema, 'object');
+
+  goto \&_eval_keyword_dependentRequired
+    if any { is_type('array', $schema->{dependencies}{$_}) } keys %{$schema->{dependencies}};
+
+  goto \&_eval_keyword_dependentSchemas;
 }
 
 sub _eval_keyword_items {
