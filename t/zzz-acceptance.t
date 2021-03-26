@@ -107,41 +107,10 @@ $accepter->acceptance(
 
 
 # date        Test::JSON::Schema::Acceptance version
-#                    result count of running *all* tests (with no TODOs)
-# ----        -----  --------------------------------------
-# 2020-05-02  0.991  Looks like you failed 272 tests of 739.
-# 2020-05-05  0.991  Looks like you failed 211 tests of 739.
-# 2020-05-05  0.992  Looks like you failed 225 tests of 775.
-# 2020-05-06  0.992  Looks like you failed 193 tests of 775.
-# 2020-05-06  0.992  Looks like you failed 190 tests of 775.
-# 2020-05-06  0.992  Looks like you failed 181 tests of 775.
-# 2020-05-07  0.992  Looks like you failed 177 tests of 775.
-# 2020-05-07  0.992  Looks like you failed 163 tests of 775.
-# 2020-05-07  0.992  Looks like you failed 161 tests of 775.
-# 2020-05-07  0.992  Looks like you failed 150 tests of 775.
-# 2020-05-08  0.993  Looks like you failed 150 tests of 776.
-# 2020-05-08  0.993  Looks like you failed 117 tests of 776.
-# 2020-05-08  0.993  Looks like you failed 107 tests of 776.
-# 2020-05-08  0.993  Looks like you failed 116 tests of 776.
-# 2020-05-08  0.993  Looks like you failed 110 tests of 776.
-# 2020-05-08  0.993  Looks like you failed 97 tests of 776.
-# 2020-05-11  0.993  Looks like you failed 126 tests of 776.
-# 2020-05-11  0.993  Looks like you failed 98 tests of 776.
-# 2020-05-12  0.994  Looks like you failed 171 tests of 959.
-# 2020-05-13  0.995  Looks like you failed 171 tests of 959.
-# 2020-05-14  0.996  Looks like you failed 171 tests of 992.
-# 2020-05-19  0.997  Looks like you failed 171 tests of 994.
-# 2020-05-22  0.997  Looks like you failed 163 tests of 994.
-# 2020-06-01  0.997  Looks like you failed 159 tests of 994.
-# 2020-06-08  0.999  Looks like you failed 176 tests of 1055.
-# 2020-06-09  0.999  Looks like you failed 165 tests of 1055.
-# 2020-06-10  0.999  Looks like you failed 104 tests of 1055.
-# 2020-07-07  0.999  Looks like you failed 31 tests of 1055.
-# 2020-08-13  1.000  Looks like you failed 44 tests of 1210.
-# 2020-08-14  1.000  Looks like you failed 42 tests of 1210.
-# 2020-10-16  1.001  Looks like you failed 42 tests of 1221.
-# 2020-11-24  1.002  Looks like you failed 46 tests of 1233.
-# 2020-12-04  1.003  Looks like you failed 40 tests of 1265.
+#                    JSON::Schema::Tiny version
+#                           result count of running *all* tests (with no TODOs)
+# ----------  -----  -----  ---------------------------------------------------
+# 2021-03-26  1.005  0.001  Looks like you failed 17 tests of 1043.
 
 
 END {
@@ -159,83 +128,65 @@ DIAG
 done_testing;
 __END__
 
-# Results using Test::JSON::Schema::Acceptance 1.003
-# with commit 6505944d38c414039cd8f27e3312b9e3831a0a16 (2.0.0-299-g6505944)
+# Results using Test::JSON::Schema::Acceptance 1.005
+# with commit cd73775f22d4cae64587486c0ee7efca9131643c (2.0.0-311-gcd73775)
 # from git://github.com/json-schema-org/JSON-Schema-Test-Suite.git:
 # specification version: draft2019-09
 # optional tests included: yes
+# skipping directory: optional/format
 #
-# filename                                    pass  todo-fail  fail
-# -----------------------------------------------------------------
-# additionalItems.json                          13          0     0
-# additionalProperties.json                     15          0     0
-# allOf.json                                    30          0     0
-# anchor.json                                    6          0     0
-# anyOf.json                                    18          0     0
-# boolean_schema.json                           18          0     0
-# const.json                                    50          0     0
-# contains.json                                 18          0     0
-# content.json                                  18          0     0
-# default.json                                   4          0     0
-# defs.json                                      2          0     0
-# dependentRequired.json                        20          0     0
-# dependentSchemas.json                         13          0     0
-# enum.json                                     33          0     0
-# exclusiveMaximum.json                          4          0     0
-# exclusiveMinimum.json                          4          0     0
-# format.json                                  114          0     0
-# id.json                                       13          0     0
-# if-then-else.json                             26          0     0
-# infinite-loop-detection.json                   2          0     0
-# items.json                                    26          0     0
-# maxContains.json                              10          0     0
-# maxItems.json                                  4          0     0
-# maxLength.json                                 5          0     0
-# maxProperties.json                             8          0     0
-# maximum.json                                   8          0     0
-# minContains.json                              23          0     0
-# minItems.json                                  4          0     0
-# minLength.json                                 5          0     0
-# minProperties.json                             6          0     0
-# minimum.json                                  11          0     0
-# multipleOf.json                                9          0     0
-# not.json                                      12          0     0
-# oneOf.json                                    27          0     0
-# pattern.json                                   9          0     0
-# patternProperties.json                        22          0     0
-# properties.json                               20          0     0
-# propertyNames.json                            10          0     0
-# recursiveRef.json                             32          0     0
-# ref.json                                      34          0     0
-# refRemote.json                                15          0     0
-# required.json                                  9          0     0
-# type.json                                     80          0     0
-# unevaluatedItems.json                         33          0     0
-# unevaluatedProperties.json                    51          0     0
-# uniqueItems.json                              64          0     0
-# optional/bignum.json                           2          7     0
-# optional/ecmascript-regex.json                31          9     0
-# optional/float-overflow.json                   0          1     0
-# optional/non-bmp-regex.json                   12          0     0
-# optional/refOfUnknownKeyword.json              4          0     0
-# optional/format/date-time.json                10          1     0
-# optional/format/date.json                      4          1     0
-# optional/format/duration.json                 17          0     0
-# optional/format/email.json                     9          0     0
-# optional/format/hostname.json                 12          0     0
-# optional/format/idn-email.json                 4          0     0
-# optional/format/idn-hostname.json             29         16     0
-# optional/format/ipv4.json                      6          0     0
-# optional/format/ipv6.json                     29          0     0
-# optional/format/iri-reference.json             5          2     0
-# optional/format/iri.json                       8          1     0
-# optional/format/json-pointer.json             32          0     0
-# optional/format/regex.json                     2          0     0
-# optional/format/relative-json-pointer.json     6          0     0
-# optional/format/time.json                      3          0     0
-# optional/format/uri-reference.json             7          0     0
-# optional/format/uri-template.json              3          1     0
-# optional/format/uri.json                      19          1     0
-# optional/format/uuid.json                     12          0     0
-# -----------------------------------------------------------------
-# TOTAL                                       1224         40     0
+# filename                           pass  todo-fail  fail
+# --------------------------------------------------------
+# additionalItems.json                 13          0     0
+# additionalProperties.json            15          0     0
+# allOf.json                           30          0     0
+# anchor.json                           3          3     0
+# anyOf.json                           18          0     0
+# boolean_schema.json                  18          0     0
+# const.json                           50          0     0
+# contains.json                        18          0     0
+# content.json                         18          0     0
+# default.json                          4          0     0
+# defs.json                             1          1     0
+# dependentRequired.json               20          0     0
+# dependentSchemas.json                13          0     0
+# enum.json                            33          0     0
+# exclusiveMaximum.json                 4          0     0
+# exclusiveMinimum.json                 4          0     0
+# format.json                         133          0     0
+# id.json                               7          6     0
+# if-then-else.json                    26          0     0
+# infinite-loop-detection.json          2          0     0
+# items.json                           26          0     0
+# maxContains.json                     10          0     0
+# maxItems.json                         4          0     0
+# maxLength.json                        5          0     0
+# maxProperties.json                    8          0     0
+# maximum.json                          8          0     0
+# minContains.json                     23          0     0
+# minItems.json                         4          0     0
+# minLength.json                        5          0     0
+# minProperties.json                    6          0     0
+# minimum.json                         11          0     0
+# multipleOf.json                       9          0     0
+# not.json                             12          0     0
+# oneOf.json                           27          0     0
+# pattern.json                          9          0     0
+# patternProperties.json               22          0     0
+# properties.json                      20          0     0
+# propertyNames.json                   10          0     0
+# recursiveRef.json                    13         19     0
+# ref.json                             32          2     0
+# refRemote.json                        7          8     0
+# required.json                         9          0     0
+# type.json                            80          0     0
+# unevaluatedItems.json                13         20     0
+# unevaluatedProperties.json           22         29     0
+# uniqueItems.json                     64          0     0
+# optional/bignum.json                  2          7     0
+# optional/ecmascript-regex.json       31          9     0
+# optional/float-overflow.json          0          1     0
+# optional/non-bmp-regex.json          12          0     0
+# optional/refOfUnknownKeyword.json     4          0     0
+# --------------------------------------------------------
+# TOTAL                               938        105     0
