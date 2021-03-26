@@ -7,7 +7,7 @@ package JSON::Schema::Tiny;
 
 our $VERSION = '0.001';
 
-use 5.016;  # for fc, unicode_strings features
+use 5.016;  # for the unicode_strings feature
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
