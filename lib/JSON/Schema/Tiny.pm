@@ -18,11 +18,12 @@ use Mojo::URL;
 use Mojo::JSON::Pointer;
 use Carp 'croak';
 use Storable 'dclone';
-use Exporter 5.57 'import';
 use JSON::MaybeXS 1.004001 'is_bool';
 use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 'any';
+use namespace::clean;
+use Exporter 5.57 'import';
 
 our @EXPORT_OK = qw(evaluate);
 
@@ -953,6 +954,9 @@ validator, supporting the most popular keywords used in the draft 2019-09 versio
 specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 
 =head1 FUNCTIONS
+
+=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
+assert_keyword_type assert_pattern assert_non_negative_integer assert_array_schemas
 
 =head2 evaluate
 
