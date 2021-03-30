@@ -1035,8 +1035,8 @@ the execution fast. These features are not available:
 =for :list
 * any output format other than C<flag> (when C<$BOOLEAN_RESULT> is true) or C<basic> (when it is
   false)
-* annotations in successful evaluation results (see
-  L<Annotations|https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.7.7>).
+* L<annotations|https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.7.7>
+  in successful evaluation results
 * use of C<$ref> other than to locations in the local schema in json-pointer format (e.g.
   C<#/path/to/property>). This means that references to external documents, either those available
   locally or on the network, are not permitted.
