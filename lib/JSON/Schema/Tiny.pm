@@ -122,7 +122,7 @@ sub _eval {
     # CORE KEYWORDS
     qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary $dynamicAnchor $dynamicRef definitions),
     # APPLICATOR KEYWORDS
-    qw(dependencies unevaluatedItems unevaluatedProperties),
+    qw(dependencies prefixItems unevaluatedItems unevaluatedProperties),
   ) {
     next if not exists $schema->{$keyword};
     abort({ %$state, keyword => $keyword }, 'keyword not supported');
