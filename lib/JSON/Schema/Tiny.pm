@@ -1082,7 +1082,7 @@ SOURCES.>
 
 =for :list
 * L<JSON::Schema::Draft201909>: a more specification-compliant JSON Schema evaluator
-* L<Test::JSON::Schema::Acceptance>
+* L<Test::JSON::Schema::Acceptance>: contains the official JSON Schema test suite
 * L<https://json-schema.org>
 
 =cut
