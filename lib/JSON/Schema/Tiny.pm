@@ -157,7 +157,6 @@ sub _eval_keyword_ref {
   my $fragment = $uri->fragment;
 
   my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($fragment);
-  # thsi is not a runtime exception because all $refs must be local
   abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
 
   return _eval($data, $subschema,
