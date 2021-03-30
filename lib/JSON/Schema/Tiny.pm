@@ -1081,7 +1081,7 @@ SOURCES.>
 =head1 SEE ALSO
 
 =for :list
-* L<JSON::Schema::Draft201909>: a more spec-compliant JSON Schema evaluator
+* L<JSON::Schema::Draft201909>: a more specification-compliant JSON Schema evaluator
 * L<Test::JSON::Schema::Acceptance>
 * L<https://json-schema.org>
 
