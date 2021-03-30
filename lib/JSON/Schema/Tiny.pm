@@ -948,7 +948,7 @@ __END__
     type => "object",
     properties => { hello => { type => "integer" } },
   };
-  my $success = evaluate($data, $schema); # true
+  my $result = evaluate($data, $schema); # { valid => true }
 
 =head1 DESCRIPTION
 
@@ -973,7 +973,7 @@ allows: null, boolean, string, number, object, array. (See L</TYPES> below.)
 The schema must represent a JSON Schema that respects the Draft 2019-09 meta-schema at
 L<https://json-schema.org/draft/2019-09/schema>, in the form of a Perl data structure, such as what is returned from a JSON decode operation.
 
-With default configuration values, the return value is a hashref indicating the validation success
+With default configuration settings, the return value is a hashref indicating the validation success
 or failure, plus (when validation failed), an arrayref of error strings in standard JSON Schema
 format. For example:
 
