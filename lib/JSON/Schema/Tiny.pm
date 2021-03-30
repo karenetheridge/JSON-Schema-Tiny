@@ -1054,6 +1054,9 @@ will result in an error):
 * C<unevaluatedItems> and C<unevaluatedProperties> (which require annotation support)
 * C<format>
 
+For a more full-featured implementation of the JSON Schema specification, see
+L<JSON::Schema::Draft201909>.
+
 =head1 LIMITATIONS
 
 =head2 Types
