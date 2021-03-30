@@ -912,13 +912,13 @@ subtest 'JSON pointer escaping' => sub {
           instanceLocation => ignore, # not important - JST errors at runtime, JSD2 at traverse time
           keywordLocation => '/$ref/properties/{}/patternProperties/a{',
           absoluteKeywordLocation => '#/$defs/mydef/properties/%7B%7D/patternProperties/a%7B',
-          error => re(qr!^\QUnescaped left brace in regex is illegal here in regex; marked by <-- HERE in m/a{ <-- HERE\E!),
+          error => re(qr/^Unescaped left brace in regex is (illegal here|deprecated|passed through)/),
         },
       ],
     },
     # all the other _schema_path_suffix cases are tested in the earlier test case
     'use of _schema_path_suffix in a fatal error',
-  );
+  ) if "$]" >= 5.022;
 };
 
 subtest 'invalid $schema' => sub {
