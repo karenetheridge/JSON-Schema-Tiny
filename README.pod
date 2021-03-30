@@ -1,28 +1,217 @@
 =pod
 
+=encoding UTF-8
+
+=for stopwords schema subschema metaschema validator evaluator
+
+=head1 NAME
+
+JSON::Schema::Tiny - Validate data against a schema, minimally
+
+=head1 VERSION
+
+version 0.001
+
 =head1 SYNOPSIS
 
-  use JSON::Schema::Tiny;
+  use JSON::Schema::Tiny qw(evaluate);
 
-  ...
+  my $data = { hello => 1 };
+  my $schema = {
+    type => "object",
+    properties => { hello => { type => "integer" } },
+  };
+  my $success = evaluate($data, $schema); # true
 
 =head1 DESCRIPTION
 
-...
+This module aims to be a slimmed-down L<JSON Schema|https://json-schema.org/> evaluator and
+validator, supporting the most popular keywords used in the draft 2019-09 version of the
+specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 
-=head1 FUNCTIONS/METHODS
+=head1 FUNCTIONS
 
-=head2 foo
+=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
+assert_keyword_type assert_pattern assert_non_negative_integer assert_array_schemas
 
-...
+=head2 evaluate
 
-=head1 ACKNOWLEDGEMENTS
+  my $result = evaluate($data, $schema);
 
-...
+Evaluates the provided instance data against the known schema document.
+
+The data is in the form of an unblessed nested Perl data structure representing any type that JSON
+allows: null, boolean, string, number, object, array. (See L</TYPES> below.)
+
+The schema must represent a JSON Schema that respects the Draft 2019-09 meta-schema at
+L<https://json-schema.org/draft/2019-09/schema>, in the form of a Perl data structure, such as what is returned from a JSON decode operation.
+
+With default configuration values, the return value is a hashref indicating the validation success
+or failure, plus (when validation failed), an arrayref of error strings in standard JSON Schema
+format. For example:
+
+running:
+
+  $result = evaluate(1, { type => 'number' });
+
+C<$result> is:
+
+  { valid => true }
+
+running:
+
+  $result = evaluate(1, { type => 'number', multipleOf => 2 });
+
+C<$result> is:
+
+  {
+    valid => false,
+    errors => [
+      {
+        instanceLocation => '',
+        keywordLocation => '/multipleOf',
+        error => 'value is not a multiple of 2',
+      },
+    ],
+  }
+
+When L</C<$BOOLEAN_RESULT>> is true, the return value is a boolean (indicating evaluation success or
+failure).
+
+=head1 OPTIONS
+
+All options are available as package-scoped global variables. Use L<local|perlfunc/local> to
+configure them for a local scope.
+
+=head2 C<$BOOLEAN_RESULT>
+
+When true, L</evaluate> will return a true or false result only, with no error strings. This enables
+short-circuit mode internally as this cannot effect results except get there faster. Defaults to false.
+
+=head2 C<$SHORT_CIRCUIT>
+
+When true, L</evaluate> will return from evaluating each subschema as soon as a true or false result
+can be determined. When C<$BOOLEAN_RESULT> is false, an incomplete list of errors will be returned.
+Defaults to false.
+
+=head2 C<$MAX_TRAVERSAL_DEPTH>
+
+The maximum number of levels deep a schema traversal may go, before evaluation is halted. This is to
+protect against accidental infinite recursion, such as from two subschemas that each reference each
+other, or badly-written schemas that could be optimized. Defaults to 50.
+
+=head1 UNSUPPORTED JSON-SCHEMA FEATURES
+
+Unlike L<JSON::Schema::Draft201909>, this is not a complete implementation of the JSON Schema
+specification. Some features and keywords are left unsupported in order to keep the code small and
+the execution fast. These features are not available:
+
+=over 4
+
+=item *
+
+any output format other than C<flag> (when C<$BOOLEAN_RESULT> is true) or C<basic> (when it is false)
+
+=item *
+
+annotations in successful evaluation results (see L<Annotations|https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.7.7>).
+
+=item *
+
+use of C<$ref> other than to locations in the local schema in json-pointer format (e.g. C<#/path/to/property>). This means that references to external documents, either those available locally or on the network, are not permitted.
+
+=back
+
+In addition, these keywords are implemented only partially or not at all (their presence in a schema
+will result in an error):
+
+=over 4
+
+=item *
+
+C<$schema> - only accepted if set to the draft201909 metaschema URI ("C<https://json-schema.org/draft/2019-09/schema>")
+
+=item *
+
+C<$id>
+
+=item *
+
+C<$anchor>
+
+=item *
+
+C<$recursiveAnchor> and C<$recursiveRef>
+
+=item *
+
+C<$vocabulary>
+
+=item *
+
+C<unevaluatedItems> and C<unevaluatedProperties> (which require annotation support)
+
+=item *
+
+C<format>
+
+=back
+
+=head1 LIMITATIONS
+
+=head2 Types
+
+Perl is a more loosely-typed language than JSON. This module delves into a value's internal
+representation in an attempt to derive the true "intended" type of the value. However, if a value is
+used in another context (for example, a numeric value is concatenated into a string, or a numeric
+string is used in an arithmetic operation), additional flags can be added onto the variable causing
+it to resemble the other type. This should not be an issue if data validation is occurring
+immediately after decoding a JSON payload.
+
+For more information, see L<Cpanel::JSON::XS/MAPPING>.
+
+=head1 SECURITY CONSIDERATIONS
+
+The C<pattern> and C<patternProperties> keywords, and the C<regex> format validator,
+evaluate regular expressions from the schema.
+No effort is taken (at this time) to sanitize the regular expressions for embedded code or
+potentially pathological constructs that may pose a security risk, either via denial of service
+or by allowing exposure to the internals of your application. B<DO NOT USE SCHEMAS FROM UNTRUSTED
+SOURCES.>
 
 =head1 SEE ALSO
 
-=for :list
-* L<foo>
+=over 4
+
+=item *
+
+L<JSON::Schema::Draft201909>: a more spec-compliant JSON Schema evaluator
+
+=item *
+
+L<Test::JSON::Schema::Acceptance>
+
+=item *
+
+L<https://json-schema.org>
+
+=back
+
+=head1 SUPPORT
+
+Bugs may be submitted through L<https://github.com/karenetheridge/JSON-Schema-Tiny/issues>.
+
+I am also usually active on irc, as 'ether' at C<irc.perl.org> and C<irc.freenode.org>.
+
+=head1 AUTHOR
+
+Karen Etheridge <ether@cpan.org>
+
+=head1 COPYRIGHT AND LICENCE
+
+This software is copyright (c) 2021 by Karen Etheridge.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut
