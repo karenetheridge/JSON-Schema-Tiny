@@ -86,7 +86,6 @@ $accepter->acceptance(
     $ENV{NO_TODO} ? () : (
     { file => [
         'optional/bignum.json',                     # TODO: see JSD2 issue #10
-        'optional/content.json',                    # removed in TJSA 1.003
         'optional/ecmascript-regex.json',           # TODO: see JSD2 issue #27
         'optional/float-overflow.json',             # see slack logs re multipleOf algo
       ] },
