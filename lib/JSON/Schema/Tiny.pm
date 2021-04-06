@@ -74,7 +74,9 @@ sub evaluate {
 sub _eval {
   my ($data, $schema, $state) = @_;
 
-  $state = { %$state };     # changes to $state should only affect subschemas, not parents
+  # do not propagate upwards changes to depth, traversed paths,
+  # but additions to errors are by reference and will be retained
+  $state = { %$state };
   delete $state->{keyword};
 
   abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
@@ -801,6 +803,7 @@ sub get_type {
 
 # compares two arbitrary data payloads for equality, as per
 # https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.4.2.3
+# if provided with a state hashref, any differences are recorded within
 sub is_equal {
   my ($x, $y, $state) = @_;
   $state->{path} //= '';
