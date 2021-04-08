@@ -81,7 +81,7 @@ $accepter->acceptance(
         unevaluatedItems.json
         unevaluatedProperties.json
       ) ] },
-    { file => 'defs.json', group_description => 'valid definition' },
+    { file => 'defs.json', group_description => [ 'valid definition', 'validate definition against metaschema' ] },
     { file => 'ref.json', group_description => [ 'remote ref, containing refs itself', 'Recursive references between schemas' ] },
     $ENV{NO_TODO} ? () : (
     { file => [
