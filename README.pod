@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.001
+version 0.002
 
 =head1 SYNOPSIS
 
@@ -21,7 +21,7 @@ version 0.001
     type => "object",
     properties => { hello => { type => "integer" } },
   };
-  my $success = evaluate($data, $schema); # true
+  my $result = evaluate($data, $schema); # { valid => true }
 
 =head1 DESCRIPTION
 
@@ -46,7 +46,7 @@ allows: null, boolean, string, number, object, array. (See L</TYPES> below.)
 The schema must represent a JSON Schema that respects the Draft 2019-09 meta-schema at
 L<https://json-schema.org/draft/2019-09/schema>, in the form of a Perl data structure, such as what is returned from a JSON decode operation.
 
-With default configuration values, the return value is a hashref indicating the validation success
+With default configuration settings, the return value is a hashref indicating the validation success
 or failure, plus (when validation failed), an arrayref of error strings in standard JSON Schema
 format. For example:
 
@@ -100,6 +100,15 @@ The maximum number of levels deep a schema traversal may go, before evaluation i
 protect against accidental infinite recursion, such as from two subschemas that each reference each
 other, or badly-written schemas that could be optimized. Defaults to 50.
 
+=head2 C<$MOJO_BOOLEANS>
+
+When true, any type that is expected to be a boolean B<in the instance data> may also be expressed as
+scalar references to a number, e.g. C<\0> or C<\1> (which are serialized as booleans by L<Mojo::JSON>).
+(Warning: scalar references and real booleans should not be mixed in data being checked by the
+C<uniqueItems> keyword.)
+
+Defaults to false.
+
 =head1 UNSUPPORTED JSON-SCHEMA FEATURES
 
 Unlike L<JSON::Schema::Draft201909>, this is not a complete implementation of the JSON Schema
@@ -114,7 +123,7 @@ any output format other than C<flag> (when C<$BOOLEAN_RESULT> is true) or C<basi
 
 =item *
 
-annotations in successful evaluation results (see L<Annotations|https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.7.7>).
+L<annotations|https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.7.7> in successful evaluation results
 
 =item *
 
@@ -157,6 +166,9 @@ C<format>
 
 =back
 
+For a more full-featured implementation of the JSON Schema specification, see
+L<JSON::Schema::Draft201909>.
+
 =head1 LIMITATIONS
 
 =head2 Types
@@ -172,8 +184,7 @@ For more information, see L<Cpanel::JSON::XS/MAPPING>.
 
 =head1 SECURITY CONSIDERATIONS
 
-The C<pattern> and C<patternProperties> keywords, and the C<regex> format validator,
-evaluate regular expressions from the schema.
+The C<pattern> and C<patternProperties> keywords evaluate regular expressions from the schema.
 No effort is taken (at this time) to sanitize the regular expressions for embedded code or
 potentially pathological constructs that may pose a security risk, either via denial of service
 or by allowing exposure to the internals of your application. B<DO NOT USE SCHEMAS FROM UNTRUSTED
@@ -185,11 +196,11 @@ SOURCES.>
 
 =item *
 
-L<JSON::Schema::Draft201909>: a more spec-compliant JSON Schema evaluator
+L<JSON::Schema::Draft201909>: a more specification-compliant JSON Schema evaluator
 
 =item *
 
-L<Test::JSON::Schema::Acceptance>
+L<Test::JSON::Schema::Acceptance>: contains the official JSON Schema test suite
 
 =item *
 
