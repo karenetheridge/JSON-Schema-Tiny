@@ -110,6 +110,7 @@ $accepter->acceptance(
 #                           result count of running *all* tests (with no TODOs)
 # ----------  -----  -----  ---------------------------------------------------
 # 2021-03-26  1.005  0.001  Looks like you failed 17 tests of 1043.
+# 2021-04-08  1.006  0.002  Looks like you failed 17 tests of 1053.
 
 
 END {
@@ -127,8 +128,8 @@ DIAG
 done_testing;
 __END__
 
-# Results using Test::JSON::Schema::Acceptance 1.005
-# with commit cd73775f22d4cae64587486c0ee7efca9131643c (2.0.0-311-gcd73775)
+# Results using Test::JSON::Schema::Acceptance 1.006
+# with commit fc68499eafa2cdbe52b4ed4d219dbb1c8c99fb2b (2.0.0-322-gfc68499)
 # from git://github.com/json-schema-org/JSON-Schema-Test-Suite.git:
 # specification version: draft2019-09
 # optional tests included: yes
@@ -179,8 +180,8 @@ __END__
 # refRemote.json                        7          8     0
 # required.json                         9          0     0
 # type.json                            80          0     0
-# unevaluatedItems.json                13         20     0
-# unevaluatedProperties.json           22         29     0
+# unevaluatedItems.json                14         21     0
+# unevaluatedProperties.json           27         32     0
 # uniqueItems.json                     64          0     0
 # optional/bignum.json                  2          7     0
 # optional/ecmascript-regex.json       31          9     0
@@ -188,4 +189,4 @@ __END__
 # optional/non-bmp-regex.json          12          0     0
 # optional/refOfUnknownKeyword.json     4          0     0
 # --------------------------------------------------------
-# TOTAL                               938        105     0
+# TOTAL                               944        109     0
