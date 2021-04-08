@@ -1,6 +1,8 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - new config option $MOJO_BOOLEANS, which will treat \0, \1 in data
+            as json booleans
 
 0.001     2021-03-30 05:39:59Z
           - Initial release.

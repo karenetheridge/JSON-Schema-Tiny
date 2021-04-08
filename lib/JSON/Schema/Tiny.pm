@@ -30,6 +30,7 @@ our @EXPORT_OK = qw(evaluate);
 our $BOOLEAN_RESULT = 0;
 our $SHORT_CIRCUIT = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
+our $MOJO_BOOLEANS = 0;
 
 sub evaluate {
   my ($data, $schema) = @_;
@@ -186,14 +187,17 @@ sub _eval_keyword_type {
     abort($state, '"type" values are not unique') if not is_elements_unique($schema->{type});
 
     foreach my $type (@{$schema->{type}}) {
-      return 1 if is_type($type, $data);
+      return 1 if is_type($type, $data)
+        or ($type eq 'boolean' and $MOJO_BOOLEANS and is_type('reference to SCALAR', $data));
     }
     return E($state, 'wrong type (expected one of %s)', join(', ', @{$schema->{type}}));
   }
   else {
     abort($state, 'unrecognized type "%s"', $schema->{type}//'<null>')
       if not any { ($schema->{type}//'') eq $_ } qw(null boolean object array string number integer);
-    return 1 if is_type($schema->{type}, $data);
+
+    return 1 if is_type($schema->{type}, $data)
+      or ($schema->{type} eq 'boolean' and $MOJO_BOOLEANS and is_type('reference to SCALAR', $data));
     return E($state, 'wrong type (expected %s)', $schema->{type});
   }
 }
@@ -205,7 +209,9 @@ sub _eval_keyword_enum {
   abort($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
 
   my @s; my $idx = 0;
-  return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } @{$schema->{enum}};
+  return 1
+    if any { is_equal($data, $_, $s[$idx++] = { $MOJO_BOOLEANS ? (lhs_mojo_bool => 1) : () }) }
+      @{$schema->{enum}};
 
   return E($state, 'value does not match'
     .(!(grep $_->{path}, @s) ? ''
@@ -215,7 +221,7 @@ sub _eval_keyword_enum {
 sub _eval_keyword_const {
   my ($data, $schema, $state) = @_;
 
-  return 1 if is_equal($data, $schema->{const}, my $s = {});
+  return 1 if is_equal($data, $schema->{const}, my $s = { $MOJO_BOOLEANS ? (lhs_mojo_bool => 1) : () });
   return E($state, 'value does not match'
     .($s->{path} ? ' (differences start at "'.$s->{path}.'")' : ''));
 }
@@ -778,6 +784,10 @@ sub is_type {
     }
   }
 
+  if ($type eq 'reference to SCALAR') {
+    return ref($value) eq 'SCALAR';
+  }
+
   croak sprintf('unknown type "%s"', $type);
 }
 
@@ -791,7 +801,10 @@ sub get_type {
   return 'array' if is_plain_arrayref($value);
   return 'boolean' if is_bool($value);
 
-  croak sprintf('unsupported reference type %s', ref $value) if is_ref($value);
+  if (my $ref = ref($value)) {
+    return 'reference to SCALAR' if $ref eq 'SCALAR';
+    croak sprintf('unsupported reference type %s', $ref);
+  }
 
   my $flags = B::svref_2object(\$value)->FLAGS;
   return 'string' if $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
@@ -809,6 +822,10 @@ sub is_equal {
   $state->{path} //= '';
 
   my @types = map get_type($_), $x, $y;
+
+  return 1 if $state->{lhs_mojo_bool}
+    and $types[0] eq 'reference to SCALAR' and $types[1] eq 'boolean' and not ($$x xor $y);
+
   return 0 if $types[0] ne $types[1];
   return 1 if $types[0] eq 'null';
   return $x eq $y if $types[0] eq 'string';
@@ -1028,6 +1045,15 @@ Defaults to false.
 The maximum number of levels deep a schema traversal may go, before evaluation is halted. This is to
 protect against accidental infinite recursion, such as from two subschemas that each reference each
 other, or badly-written schemas that could be optimized. Defaults to 50.
+
+=head2 C<$MOJO_BOOLEANS>
+
+When true, any type that is expected to be a boolean B<in the instance data> may also be expressed as
+scalar references to a number, e.g. C<\0> or C<\1> (which are serialized as booleans by L<Mojo::JSON>).
+(Warning: scalar references and real booleans should not be mixed in data being checked by the
+C<uniqueItems> keyword.)
+
+Defaults to false.
 
 =head1 UNSUPPORTED JSON-SCHEMA FEATURES
 
