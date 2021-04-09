@@ -49,9 +49,9 @@ sub evaluate {
     root_schema => $schema,
   };
 
-  my $result;
+  my $valid;
   try {
-    $result = _eval($data, $schema, $state)
+    $valid = _eval($data, $schema, $state)
   }
   catch ($e) {
     if (is_plain_hashref($e)) {
@@ -61,12 +61,12 @@ sub evaluate {
       E($state, 'EXCEPTION: '.$e);
     }
 
-    $result = 0;
+    $valid = 0;
   }
 
-  return $BOOLEAN_RESULT ? $result : +{
-    valid => $result ? JSON::PP::true : JSON::PP::false,
-    $result ? () : (errors => $state->{errors}),
+  return $BOOLEAN_RESULT ? $valid : +{
+    valid => $valid ? JSON::PP::true : JSON::PP::false,
+    $valid ? () : (errors => $state->{errors}),
   };
 }
 
@@ -96,7 +96,7 @@ sub _eval {
   return $schema || E($state, 'subschema is false') if $schema_type eq 'boolean';
   abort($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
 
-  my $result = 1;
+  my $valid = 1;
 
   foreach my $keyword (
     # CORE KEYWORDS
@@ -115,9 +115,9 @@ sub _eval {
     next if not exists $schema->{$keyword};
 
     my $sub = __PACKAGE__->can('_eval_keyword_'.($keyword =~ s/^\$//r));
-    $result = 0 if not $sub->($data, $schema, +{ %$state, keyword => $keyword });
+    $valid = 0 if not $sub->($data, $schema, +{ %$state, keyword => $keyword });
 
-    last if not $result and $state->{short_circuit};
+    last if not $valid and $state->{short_circuit};
   }
 
   # UNSUPPORTED KEYWORDS
@@ -131,7 +131,7 @@ sub _eval {
     abort({ %$state, keyword => $keyword }, 'keyword not supported');
   }
 
-  return $result;
+  return $valid;
 }
 
 # KEYWORD IMPLEMENTATIONS
