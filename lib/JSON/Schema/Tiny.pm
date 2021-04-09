@@ -1081,7 +1081,7 @@ will result in an error):
 * C<$recursiveAnchor> and C<$recursiveRef>
 * C<$vocabulary>
 * C<unevaluatedItems> and C<unevaluatedProperties> (which require annotation support)
-* C<format>
+* C<format> (does not cause an error when used)
 
 For a more full-featured implementation of the JSON Schema specification, see
 L<JSON::Schema::Draft201909>.
