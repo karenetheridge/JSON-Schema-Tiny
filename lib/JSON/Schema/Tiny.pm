@@ -377,20 +377,20 @@ sub _eval_keyword_dependentRequired {
   my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'object');
-  abort($state, '"%s" property is not an array', $state->{keyword})
-    if any { !is_type('array', $schema->{$state->{keyword}}{$_}) }
-      keys %{$schema->{$state->{keyword}}};
-  abort($state, '"%s" property element is not a string', $state->{keyword})
-    if any { !is_type('string', $_) } map @$_, values %{$schema->{$state->{keyword}}};
-  abort($state, '"%s" property elements are not unique', $state->{keyword})
-    if any { !is_elements_unique($schema->{$state->{keyword}}{$_}) }
-      keys %{$schema->{$state->{keyword}}};
+  abort($state, '"dependentRequired" property is not an array')
+    if any { !is_type('array', $schema->{dependentRequired}{$_}) }
+      keys %{$schema->{dependentRequired}};
+  abort($state, '"dependentRequired" property element is not a string')
+    if any { !is_type('string', $_) } map @$_, values %{$schema->{dependentRequired}};
+  abort($state, '"dependentRequired" property elements are not unique')
+    if any { !is_elements_unique($schema->{dependentRequired}{$_}) }
+      keys %{$schema->{dependentRequired}};
 
   return 1 if not is_type('object', $data);
 
   my @missing = grep
-    +(exists $data->{$_} && any { !exists $data->{$_} } @{ $schema->{$state->{keyword}}{$_} }),
-    keys %{$schema->{$state->{keyword}}};
+    +(exists $data->{$_} && any { !exists $data->{$_} } @{ $schema->{dependentRequired}{$_} }),
+    keys %{$schema->{dependentRequired}};
 
   return 1 if not @missing;
   return E($state, 'missing propert%s: %s', @missing > 1 ? 'ies' : 'y', join(', ', sort @missing));
@@ -490,10 +490,10 @@ sub _eval_keyword_dependentSchemas {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (sort keys %{$schema->{$state->{keyword}}}) {
+  foreach my $property (sort keys %{$schema->{dependentSchemas}}) {
     next if not exists $data->{$property}
-      or _eval($data, $schema->{$state->{keyword}}{$property},
-        +{ %$state, schema_path => jsonp($state->{schema_path}, $state->{keyword}, $property) });
+      or _eval($data, $schema->{dependentSchemas}{$property},
+        +{ %$state, schema_path => jsonp($state->{schema_path}, 'dependentSchemas', $property) });
 
     $valid = 0;
     last if $state->{short_circuit};
