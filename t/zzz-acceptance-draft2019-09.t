@@ -21,13 +21,20 @@ BEGIN {
     if not -d '.git' and not grep $ENV{$_}, @variables;
 }
 
+my $version = 'draft2019-09';
+
 acceptance_tests(
   acceptance => {
+    specification => $version,
     skip_dir => 'optional/format',
   },
-  output_file => 'draft2019-09.txt',
+  evaluator => {
+    specification_version => $version,
+  },
+  output_file => $version.'.txt',
   test => {
     $ENV{NO_TODO} ? () : ( todo_tests => [
+      # unsupported keywords or subfeatures
       { file => [ qw(
           anchor.json
           id.json

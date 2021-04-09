@@ -21,7 +21,7 @@ use Storable 'dclone';
 use JSON::MaybeXS 1.004001 'is_bool';
 use Feature::Compat::Try;
 use JSON::PP ();
-use List::Util 1.33 'any';
+use List::Util 1.33 qw(any none);
 use Scalar::Util 'blessed';
 use namespace::clean;
 use Exporter 5.57 'import';
@@ -32,6 +32,11 @@ our $BOOLEAN_RESULT = 0;
 our $SHORT_CIRCUIT = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
 our $MOJO_BOOLEANS = 0;
+our $SPECIFICATION_VERSION;
+
+my %version_uris = (
+  'https://json-schema.org/draft/2019-09/schema' => 'draft2019-09',
+);
 
 sub new {
   my ($class, %args) = @_;
@@ -45,8 +50,12 @@ sub evaluate {
   local $SHORT_CIRCUIT = $_[0]->{short_circuit} // $SHORT_CIRCUIT,
   local $MAX_TRAVERSAL_DEPTH = $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH,
   local $MOJO_BOOLEANS = $_[0]->{mojo_booleans} // $MOJO_BOOLEANS,
+  local $SPECIFICATION_VERSION = $_[0]->{specification_version} // $SPECIFICATION_VERSION,
   shift
     if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
+
+  croak '$SPECIFICATION_VERSION value is invalid'
+    if defined $SPECIFICATION_VERSION and none { $SPECIFICATION_VERSION eq $_ } values %version_uris;
 
   croak 'insufficient arguments' if @_ < 2;
   my ($data, $schema) = @_;
@@ -61,6 +70,7 @@ sub evaluate {
     seen => {},
     short_circuit => $BOOLEAN_RESULT || $SHORT_CIRCUIT,
     root_schema => $schema,                 # so we can do $refs within the same document
+    spec_version => $SPECIFICATION_VERSION,
   };
 
   my $valid;
@@ -88,10 +98,13 @@ sub evaluate {
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
-# keyword => undef, or arrayref of alternatives
+# current spec version => { keyword => undef, or arrayref of alternatives }
 my %removed_keywords = (
-  definitions => [ '$defs' ],
-  dependencies => [ qw(dependentSchemas dependentRequired) ],
+  'draft2019-09' => {
+    id => [ '$id' ],
+    definitions => [ '$defs' ],
+    dependencies => [ qw(dependentSchemas dependentRequired) ],
+  },
 );
 
 sub _eval_subschema {
@@ -121,6 +134,7 @@ sub _eval_subschema {
   abort($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
 
   my $valid = 1;
+  my $spec_version = $state->{spec_version}//'';
 
   foreach my $keyword (
     # CORE KEYWORDS
@@ -155,12 +169,12 @@ sub _eval_subschema {
   }
 
   # check for previously-supported but now removed keywords
-  foreach my $keyword (keys %removed_keywords) {
+  foreach my $keyword (sort keys %{$removed_keywords{$spec_version}}) {
     next if not exists $schema->{$keyword};
     my $message ='no-longer-supported "'.$keyword.'" keyword present (at location "'
       .canonical_schema_uri($state).'")';
-    if ($removed_keywords{$keyword}) {
-      my @list = map '"'.$_.'"', @{$removed_keywords{$keyword}};
+    if (my $alternates = $removed_keywords{$spec_version}->{$keyword}) {
+      my @list = map '"'.$_.'"', @$alternates;
       @list = ((map $_.',', @list[0..$#list-1]), $list[-1]) if @list > 2;
       splice(@list, -1, 0, 'or') if @list > 1;
       $message .= ': this should be rewritten as '.join(' ', @list);
@@ -177,12 +191,20 @@ sub _eval_keyword_schema {
   my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'string');
+  assert_uri($state, $schema);
 
   return abort($state, '$schema can only appear at the schema resource root')
     if length($state->{schema_path});
 
-  abort($state, 'custom $schema references are not supported')
-    if $schema->{'$schema'} ne 'https://json-schema.org/draft/2019-09/schema';
+  my $spec_version = $version_uris{$schema->{'$schema'}};
+  abort($state, 'custom $schema URIs are not supported (must be one of: %s',
+     join(', ', map '"'.$_.'"', keys %version_uris))
+    if not $spec_version;
+
+  abort($state, '"$schema" indicates a different version than that requested by $JSON::Schema::Tiny::SPECIFICATION_VERSION')
+    if defined $SPECIFICATION_VERSION and $SPECIFICATION_VERSION ne $spec_version;
+
+  $state->{spec_version} = $spec_version;
 }
 
 sub _eval_keyword_ref {
@@ -1173,8 +1195,8 @@ __END__
 =head1 DESCRIPTION
 
 This module aims to be a slimmed-down L<JSON Schema|https://json-schema.org/> evaluator and
-validator, supporting the most popular keywords used in the draft 2019-09 version of the
-specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
+validator, supporting the most popular keywords.
+(See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 
 =head1 FUNCTIONS
 
@@ -1191,8 +1213,8 @@ Evaluates the provided instance data against the known schema document.
 The data is in the form of an unblessed nested Perl data structure representing any type that JSON
 allows: null, boolean, string, number, object, array. (See L</TYPES> below.)
 
-The schema must represent a JSON Schema that respects the Draft 2019-09 meta-schema at
-L<https://json-schema.org/draft/2019-09/schema>, in the form of a Perl data structure, such as what is returned from a JSON decode operation.
+The schema must represent a valid JSON Schema in the form of a Perl data structure, such as what is
+returned from a JSON decode operation.
 
 With default configuration settings, the return value is a hashref indicating the validation success
 or failure, plus (when validation failed), an arrayref of error strings in standard JSON Schema
@@ -1256,7 +1278,20 @@ scalar references to a number, e.g. C<\0> or C<\1> (which are serialized as bool
 (Warning: scalar references and real booleans should not be mixed in data being checked by the
 C<uniqueItems> keyword.)
 
-Defaults to false.
+=head2 C<$SPECIFICATION_VERSION>
+
+When set, the version of the draft specification is locked to one particular value, and use of
+keywords inconsistent with that specification version will result in an error. Will be set
+internally automatically with the use of the C<$schema> keyword. When not set, all keywords will be
+honoured (when otherwise supported).
+
+Supported values for this option, and the corresponding values for the C<$schema> keyword, are:
+
+=for :list
+* L<C<draft2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
+  corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>.
+
+Defaults to undef.
 
 =head1 UNSUPPORTED JSON-SCHEMA FEATURES
 
@@ -1277,8 +1312,8 @@ In addition, these keywords are implemented only partially or not at all (their 
 will result in an error):
 
 =for :list
-* C<$schema> - only accepted if set to the draft201909 metaschema URI
-  ("C<https://json-schema.org/draft/2019-09/schema>")
+* C<$schema> - only accepted if set to one of the specification metaschema URIs (see
+  L<$SPECIFICATION_VERSION> for supported values)
 * C<$id>
 * C<$anchor>
 * C<$recursiveAnchor> and C<$recursiveRef>

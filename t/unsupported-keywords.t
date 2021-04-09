@@ -33,17 +33,45 @@ foreach my $keyword (
   );
 }
 
-my %warnings = (
+my %strings = (
+  id => qr/^no-longer-supported "id" keyword present \(at location ""\): this should be rewritten as "\$id" at /,
   definitions => qr/^no-longer-supported "definitions" keyword present \(at location ""\): this should be rewritten as "\$defs" at /,
   dependencies => qr/^no-longer-supported "dependencies" keyword present \(at location ""\): this should be rewritten as "dependentSchemas" or "dependentRequired" at /,
 );
 
-foreach my $keyword (keys %warnings) {
-  cmp_deeply(
-    [ warnings { ok(evaluate(true, { $keyword => 1 }), 'schema with '.$keyword.' still validates') } ],
-    [ re($warnings{$keyword}), ],
-    'warned for '.$keyword,
-  );
+my %schemas = (
+  id => 'https://localhost:1234',
+  definitions => {},
+  dependencies => {},
+);
+
+my @warnings = (
+  [ 'draft2019-09' => [ qw(id definitions dependencies) ] ],
+);
+
+foreach my $index (0 .. $#warnings) {
+  my ($spec_version, $removed_keywords) = @{$warnings[$index]};
+
+  note "\n", $spec_version;
+  my $js = JSON::Schema::Tiny->new(specification_version => $spec_version);
+  foreach my $keyword (@$removed_keywords) {
+    cmp_deeply(
+      [ warnings { ok($js->evaluate(true, { $keyword => $schemas{$keyword} }), 'schema with "'.$keyword.'" still validates in '.$spec_version) } ],
+      [ re($strings{$keyword}), ],
+      'warned for "'.$keyword.'" in '.$spec_version,
+    );
+  }
+
+  next if $index == $#warnings;
+  my ($next_spec_version, $removed_next_keywords) = @{$warnings[$index+1]};
+  foreach my $keyword (@$removed_next_keywords) {
+    next if grep $keyword eq $_, @$removed_keywords;
+    cmp_deeply(
+      [ warnings { ok($js->evaluate(true, { $keyword => $schemas{$keyword} }), 'schema with "'.$keyword.'" still validates') } ],
+      [],
+      'did not warn for "'.$keyword.'" in '.$spec_version,
+    );
+  }
 }
 
 done_testing;

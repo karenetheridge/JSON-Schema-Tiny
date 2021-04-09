@@ -13,7 +13,7 @@ use Path::Tiny;
 
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning';
 use Test::JSON::Schema::Acceptance 1.007;
-use JSON::Schema::Tiny 'evaluate';
+use JSON::Schema::Tiny;
 
 BEGIN {
   foreach my $env (qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING NO_TODO TEST_DIR NO_SHORT_CIRCUIT)) {
@@ -27,7 +27,6 @@ sub acceptance_tests {
 
   local $Test::Builder::Level = $Test::Builder::Level + 1;
   my $accepter = Test::JSON::Schema::Acceptance->new(
-    specification => 'draft2019-09',
     include_optional => 1,
     verbose => 1,
     test_schemas => 0,
@@ -35,20 +34,19 @@ sub acceptance_tests {
     $ENV{TEST_DIR} ? (test_dir => $ENV{TEST_DIR}) : (),
   );
 
+  my $js = JSON::Schema::Tiny->new(%{$options{evaluator}});
+  my $js_short_circuit = JSON::Schema::Tiny->new(%{$options{evaluator}}, short_circuit => 1);
+
   my $encoder = JSON::MaybeXS->new(allow_nonref => 1, utf8 => 0, convert_blessed => 1, canonical => 1, pretty => 1);
   $encoder->indent_length(2) if $encoder->can('indent_length');
 
   $accepter->acceptance(
     validate_data => sub {
       my ($schema, $instance_data) = @_;
-      my $result = evaluate($instance_data, $schema);
-      my $result_short = $ENV{NO_SHORT_CIRCUIT} || do {
-        local $JSON::Schema::Tiny::SHORT_CIRCUIT = 1;
-        evaluate($instance_data, $schema);
-      };
+      my $result = $js->evaluate($instance_data, $schema);
+      my $result_short = $ENV{NO_SHORT_CIRCUIT} || $js_short_circuit->evaluate($instance_data, $schema);
 
       note 'result: ', $encoder->encode($result);
-
       note 'short-circuited result: ', ($encoder->encode($result_short) ? 'true' : 'false')
         if not $ENV{NO_SHORT_CIRCUIT} and ($result->{valid} xor $result_short->{valid});
 
