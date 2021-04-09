@@ -21,7 +21,7 @@ use Storable 'dclone';
 use JSON::MaybeXS 1.004001 'is_bool';
 use Feature::Compat::Try;
 use JSON::PP ();
-use List::Util 'any';
+use List::Util 1.33 'any';
 use namespace::clean;
 use Exporter 5.57 'import';
 
