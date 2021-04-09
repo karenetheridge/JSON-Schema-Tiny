@@ -36,6 +36,7 @@ our $SCALARREF_BOOLEANS;
 our $SPECIFICATION_VERSION;
 
 my %version_uris = (
+  'https://json-schema.org/draft/2020-12/schema' => 'draft2020-12',
   'https://json-schema.org/draft/2019-09/schema' => 'draft2019-09',
   'http://json-schema.org/draft-07/schema#'      => 'draft7',
 );
@@ -111,6 +112,14 @@ my %removed_keywords = (
     definitions => [ '$defs' ],
     dependencies => [ qw(dependentSchemas dependentRequired) ],
   },
+  'draft2020-12' => {
+    id => [ '$id' ],
+    definitions => [ '$defs' ],
+    dependencies => [ qw(dependentSchemas dependentRequired) ],
+    '$recursiveAnchor' => [ '$dynamicAnchor' ],
+    '$recursiveRef' => [ '$dynamicRef' ],
+    additionalItems => [ 'items' ],
+  },
 );
 
 sub _eval_subschema {
@@ -147,8 +156,10 @@ sub _eval_subschema {
     qw($id $schema),
     !$spec_version || $spec_version ne 'draft7' ? '$anchor' : (),
     !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveAnchor' : (),
+    !$spec_version || $spec_version eq 'draft2020-12' ? '$dynamicAnchor' : (),
     '$ref',
     !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveRef' : (),
+    !$spec_version || $spec_version eq 'draft2020-12' ? '$dynamicRef' : (),
     !$spec_version || $spec_version ne 'draft7' ? qw($vocabulary $comment) : (),
     !$spec_version || $spec_version eq 'draft7' ? 'definitions' : (),
     !$spec_version || $spec_version ne 'draft7' ? '$defs' : (),
@@ -156,8 +167,10 @@ sub _eval_subschema {
     qw(allOf anyOf oneOf not if),
     !$spec_version || $spec_version ne 'draft7' ? 'dependentSchemas' : (),
     !$spec_version || $spec_version eq 'draft7' ? 'dependencies' : (),
-    qw(items additionalItems contains
-      properties patternProperties additionalProperties propertyNames),
+    !$spec_version || $spec_version !~ qr/^draft(7|2019-09)$/ ? 'prefixItems' : (),
+    'items',
+    !$spec_version || $spec_version =~ qr/^draft(7|2019-09)$/ ? 'additionalItems' : (),
+    qw(contains properties patternProperties additionalProperties propertyNames),
     # UNEVALUATED KEYWORDS
     !$spec_version || $spec_version ne 'draft7' ? qw(unevaluatedItems unevaluatedProperties) : (),
     # VALIDATOR KEYWORDS
@@ -237,14 +250,14 @@ sub _eval_keyword_ref {
   assert_keyword_type($state, $schema, 'string');
   assert_uri_reference($state, $schema);
 
-  my $uri = Mojo::URL->new($schema->{'$ref'})->to_abs($state->{initial_schema_uri});
-  abort($state, '$refs to anchors are not supported')
+  my $uri = Mojo::URL->new($schema->{$state->{keyword}})->to_abs($state->{initial_schema_uri});
+  abort($state, '%ss to anchors are not supported', $state->{keyword})
     if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
 
   # the base of the $ref uri must be the same as the base of the root schema
   # unfortunately this means that many uses of $ref won't work, because we don't
   # track the locations of $ids in this or other documents.
-  abort($state, 'only same-document, same-base JSON pointers are supported in $ref')
+  abort($state, 'only same-document, same-base JSON pointers are supported in %s', $state->{keyword})
     if $uri->clone->fragment(undef) ne Mojo::URL->new($state->{root_schema}{'$id'}//'');
 
   my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
@@ -252,7 +265,7 @@ sub _eval_keyword_ref {
 
   return _eval_subschema($data, $subschema,
     +{ %$state,
-      traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$ref',
+      traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/'.$state->{keyword},
       initial_schema_uri => $uri,
       schema_path => '',
     });
@@ -292,6 +305,8 @@ sub _eval_keyword_recursiveRef {
     });
 }
 
+sub _eval_keyword_dynamicRef { goto \&_eval_keyword_ref }
+
 sub _eval_keyword_id {
   my ($data, $schema, $state) = @_;
 
@@ -330,7 +345,13 @@ sub _eval_keyword_anchor {
 
   assert_keyword_type($state, $schema, 'string');
 
-  return 1 if $schema->{'$anchor'} =~ /^[A-Za-z][A-Za-z0-9_:.-]*$/;
+  return 1 if
+    (!$state->{spec_version} or $state->{spec_version} eq 'draft2019-09')
+        and ($schema->{'$anchor'}//'') =~ /^[A-Za-z][A-Za-z0-9_:.-]*$/
+      or
+    (!$state->{spec_version} or $state->{spec_version} eq 'draft2020-12')
+        and ($schema->{'$anchor'}//'') =~ /^[A-Za-z_][A-Za-z0-9._-]*$/;
+
   abort($state, '$anchor value does not match required syntax');
 }
 
@@ -349,6 +370,16 @@ sub _eval_keyword_recursiveAnchor {
   # of a $recursiveRef uri -- as if it was the current location when we encounter a $ref.
   $state->{recursive_anchor_uri} = canonical_schema_uri($state);
 
+  return 1;
+}
+
+sub _eval_keyword_dynamicAnchor {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'string');
+
+  abort($state, '$dynamicAnchor value does not match required syntax')
+    if $schema->{'$dynamicAnchor'} !~ /^[A-Za-z_][A-Za-z0-9._-]*$/;
   return 1;
 }
 
@@ -793,10 +824,50 @@ sub _eval_keyword_dependencies {
   return E($state, 'not all dependencies are satisfied');
 }
 
+# drafts 4, 6, 7, 2019-09:
+# prefixItems: ignored
+# items - array-based  - start at 0; set $state->{_last_items_index} to last evaluated (not successfully).
+# items - schema-based - start at 0; set $state->{_last_items_index} to last data item.
+#                        booleans NOT accepted in draft4.
+# additionalItems - schema-based. consume $state->{_last_items_index} as starting point.
+#                                 booleans accepted in all versions.
+
+# draft2020-12:
+# prefixItems - array-based - start at 0; set $state->{_last_items_index} to last evaluated (not successfully).
+# items - array-based: error
+# items - schema-based - consume $state->{_last_items_index} as starting point.
+# additionalItems - ignored
+
+# no $SPECIFICATION_VERSION specified:
+# prefixItems - array-based - set $state->{_last_items_index} to last evaluated (not successfully).
+# items - array-based  -  starting index is always 0
+#                             set $state->{_last_items_index} to last evaluated (not successfully).
+# items - schema-based -  consume $state->{_last_items_index} as starting point
+#                             set $state->{_last_items_index} to last data item.
+#                                  booleans accepted.
+# additionalItems - schema-based. consume $state->{_last_items_index} as starting point.
+#                                 booleans accepted.
+
+# prefixItems + items(array-based): items will generate an error
+# prefixItems + additionalItems: additionalItems will be ignored
+# items(schema-based) + additionalItems: additionalItems does nothing.
+
+sub _eval_keyword_prefixItems {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_array_schemas($schema, $state);
+  goto \&_eval_keyword__items_array_schemas;
+}
+
 sub _eval_keyword_items {
   my ($data, $schema, $state) = @_;
 
-  goto \&_eval_keyword__items_array_schemas if is_plain_arrayref($schema->{items});
+  if (is_plain_arrayref($schema->{items})) {
+    abort($state, 'array form of "items" not supported in %s', $state->{spec_version})
+      if ($state->{spec_version}//'') eq 'draft2020-12';
+
+    goto \&_eval_keyword__items_array_schemas;
+  }
 
   $state->{_last_items_index} //= -1;
   goto \&_eval_keyword__items_schema;
@@ -809,7 +880,7 @@ sub _eval_keyword_additionalItems {
   goto \&_eval_keyword__items_schema;
 }
 
-# array-based items
+# prefixItems (draft 2020-12), array-based items (all drafts)
 sub _eval_keyword__items_array_schemas {
   my ($data, $schema, $state) = @_;
 
@@ -834,14 +905,17 @@ sub _eval_keyword__items_array_schemas {
     }
 
     $valid = 0;
-    last if $state->{short_circuit} and not exists $schema->{additionalItems};
+    last if $state->{short_circuit} and not exists $schema->{
+        $state->{keyword} eq 'prefixItems' ? 'items'
+      : $state->{keyword} eq 'items' ? 'additionalItems' : die
+    };
   }
 
   return E($state, 'not all items are valid') if not $valid;
   return 1;
 }
 
-# schema-based items and additionalItems
+# schema-based items (all drafts), and additionalItems (drafts 4,6,7,2019-09)
 sub _eval_keyword__items_schema {
   my ($data, $schema, $state) = @_;
 
@@ -849,12 +923,13 @@ sub _eval_keyword__items_schema {
   return 1 if $state->{_last_items_index} == $#{$data};
 
   my $valid = 1;
-
   foreach my $idx ($state->{_last_items_index}+1 .. $#{$data}) {
-    if (is_type('boolean', $schema->{$state->{keyword}})) {
+    if (is_type('boolean', $schema->{$state->{keyword}})
+        and ($state->{keyword} eq 'additionalItems')) {
       next if $schema->{$state->{keyword}};
       $valid = E({ %$state, data_path => $state->{data_path}.'/'.$idx },
-        '%sitem not permitted', $state->{keyword} eq 'additionalItems' ? 'additional ' : '');
+        '%sitem not permitted',
+        exists $schema->{prefixItems} || $state->{keyword} eq 'additionalItems' ? 'additional ' : '');
     }
     else {
       next if _eval_subschema($data->[$idx], $schema->{$state->{keyword}},
@@ -869,7 +944,8 @@ sub _eval_keyword__items_schema {
   $state->{_last_items_index} = $#{$data};
 
   return E($state, 'subschema is not valid against all %sitems',
-    $state->{keyword} eq 'additionalItems' ? 'additional ' : '') if not $valid;
+      exists $schema->{prefixItems} || $state->{keyword} eq 'additionalItems' ? 'additional ' : '')
+    if not $valid;
   return 1;
 }
 
@@ -1094,7 +1170,7 @@ sub get_type {
 }
 
 # compares two arbitrary data payloads for equality, as per
-# https://json-schema.org/draft/2019-09/json-schema-core.html#rfc.section.4.2.3
+# https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.4.2.2
 # if provided with a state hashref, any differences are recorded within
 sub is_equal {
   my ($x, $y, $state) = @_;
@@ -1387,6 +1463,8 @@ honoured (when otherwise supported).
 Supported values for this option, and the corresponding values for the C<$schema> keyword, are:
 
 =for :list
+* L<C<draft2020-12>|https://json-schema.org/specification-links.html#2020-12>,
+  corresponding to metaschema C<https://json-schema.org/draft/2020-12/schema>
 * L<C<draft2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
   corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>.
 * L<C<draft7>|https://json-schema.org/specification-links.html#draft-7>,
