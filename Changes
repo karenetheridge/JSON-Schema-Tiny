@@ -2,6 +2,8 @@ Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
           - better handling of blessed data types and other references
+          - support for specification version draft7, through the "$schema"
+            keyword and the new $SPECIFICATION_VERSION variable
 
 0.007     2021-07-22 05:20:31Z
           - add incomplete prereq declaration for Mojo::URL

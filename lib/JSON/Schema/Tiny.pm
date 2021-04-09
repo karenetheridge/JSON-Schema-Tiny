@@ -37,6 +37,7 @@ our $SPECIFICATION_VERSION;
 
 my %version_uris = (
   'https://json-schema.org/draft/2019-09/schema' => 'draft2019-09',
+  'http://json-schema.org/draft-07/schema#'      => 'draft7',
 );
 
 sub new {
@@ -102,6 +103,9 @@ sub evaluate {
 
 # current spec version => { keyword => undef, or arrayref of alternatives }
 my %removed_keywords = (
+  'draft7' => {
+    id => [ '$id' ],
+  },
   'draft2019-09' => {
     id => [ '$id' ],
     definitions => [ '$defs' ],
@@ -140,22 +144,36 @@ sub _eval_subschema {
 
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($id $schema $anchor $recursiveAnchor $ref $recursiveRef $vocabulary $comment $defs),
+    qw($id $schema),
+    !$spec_version || $spec_version ne 'draft7' ? '$anchor' : (),
+    !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveAnchor' : (),
+    '$ref',
+    !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveRef' : (),
+    !$spec_version || $spec_version ne 'draft7' ? qw($vocabulary $comment) : (),
+    !$spec_version || $spec_version eq 'draft7' ? 'definitions' : (),
+    !$spec_version || $spec_version ne 'draft7' ? '$defs' : (),
     # APPLICATOR KEYWORDS
-    qw(allOf anyOf oneOf not if dependentSchemas
-      items additionalItems contains
+    qw(allOf anyOf oneOf not if),
+    !$spec_version || $spec_version ne 'draft7' ? 'dependentSchemas' : (),
+    !$spec_version || $spec_version eq 'draft7' ? 'dependencies' : (),
+    qw(items additionalItems contains
       properties patternProperties additionalProperties propertyNames),
     # UNEVALUATED KEYWORDS
-    qw(unevaluatedItems unevaluatedProperties),
+    !$spec_version || $spec_version ne 'draft7' ? qw(unevaluatedItems unevaluatedProperties) : (),
     # VALIDATOR KEYWORDS
     qw(type enum const
       multipleOf maximum exclusiveMaximum minimum exclusiveMinimum
       maxLength minLength pattern
-      maxItems minItems uniqueItems
-      maxContains minContains
-      maxProperties minProperties required dependentRequired),
+      maxItems minItems uniqueItems),
+    !$spec_version || $spec_version ne 'draft7' ? qw(maxContains minContains) : (),
+    qw(maxProperties minProperties required),
+    !$spec_version || $spec_version ne 'draft7' ? 'dependentRequired' : (),
   ) {
     next if not exists $schema->{$keyword};
+
+    # keywords adjacent to $ref (except for definitions) are not evaluated before draft2019-09
+    next if $keyword ne '$ref' and $keyword ne 'definitions'
+      and exists $schema->{'$ref'} and $spec_version eq 'draft7';
 
     $state->{keyword} = $keyword;
     my $error_count = @{$state->{errors}};
@@ -205,6 +223,10 @@ sub _eval_keyword_schema {
 
   abort($state, '"$schema" indicates a different version than that requested by $JSON::Schema::Tiny::SPECIFICATION_VERSION')
     if defined $SPECIFICATION_VERSION and $SPECIFICATION_VERSION ne $spec_version;
+
+  # we special-case this because the check in _eval for older drafts + $ref has already happened
+  abort($state, '$schema and $ref cannot be used together in older drafts')
+    if exists $schema->{'$ref'} and $spec_version eq 'draft7';
 
   $state->{spec_version} = $spec_version;
 }
@@ -277,7 +299,21 @@ sub _eval_keyword_id {
   assert_uri_reference($state, $schema);
 
   my $uri = Mojo::URL->new($schema->{'$id'});
-  abort($state, '$id value "%s" cannot have a non-empty fragment', $uri) if length $uri->fragment;
+
+  if (($state->{spec_version}//'') eq 'draft7') {
+    if (length($uri->fragment)) {
+      abort($state, '$id cannot change the base uri at the same time as declaring an anchor')
+        if length($uri->clone->fragment(undef));
+
+      abort($state, '$id value does not match required syntax')
+        if $uri->fragment !~ m/^[A-Za-z][A-Za-z0-9_:.-]*$/;
+
+      return 1;
+    }
+  }
+  else {
+    abort($state, '$id value "%s" cannot have a non-empty fragment', $uri) if length $uri->fragment;
+  }
 
   $uri->fragment(undef);
   return E($state, '$id cannot be empty') if not length $uri;
@@ -342,6 +378,8 @@ sub _eval_keyword_comment {
   assert_keyword_type($state, $schema, 'string');
   return 1;
 }
+
+sub _eval_keyword_definitions { goto \&_eval_keyword_defs }
 
 sub _eval_keyword_defs {
   my ($data, $schema, $state) = @_;
@@ -713,6 +751,48 @@ sub _eval_keyword_dependentSchemas {
   return 1;
 }
 
+sub _eval_keyword_dependencies {
+  my ($data, $schema, $state) = @_;
+
+  assert_keyword_type($state, $schema, 'object');
+
+  return 1 if not is_type('object', $data);
+
+  my $valid = 1;
+  foreach my $property (sort keys %{$schema->{dependencies}}) {
+    if (is_type('array', $schema->{dependencies}{$property})) {
+      # as in dependentRequired
+
+      foreach my $index (0..$#{$schema->{dependencies}{$property}}) {
+        abort({ %$state, _schema_path_suffix => $property }, 'element #%d is not a string', $index)
+          if not is_type('string', $schema->{dependencies}{$property}[$index]);
+      }
+
+      abort({ %$state, _schema_path_suffix => $property }, 'elements are not unique')
+        if not is_elements_unique($schema->{dependencies}{$property});
+
+      next if not exists $data->{$property};
+
+      if (my @missing = grep !exists($data->{$_}), @{$schema->{dependencies}{$property}}) {
+        $valid = E({ %$state, _schema_path_suffix => $property },
+          'missing propert%s: %s', @missing > 1 ? 'ies' : 'y', join(', ', @missing));
+      }
+    }
+    else {
+      # as in dependentSchemas
+      next if not exists $data->{$property}
+        or _eval_subschema($data, $schema->{dependencies}{$property},
+          +{ %$state, schema_path => jsonp($state->{schema_path}, 'dependencies', $property) });
+
+      $valid = 0;
+      last if $state->{short_circuit};
+    }
+  }
+
+  return 1 if $valid;
+  return E($state, 'not all dependencies are satisfied');
+}
+
 sub _eval_keyword_items {
   my ($data, $schema, $state) = @_;
 
@@ -814,7 +894,8 @@ sub _eval_keyword_contains {
   }
 
   # note: no items contained is only valid when minContains is explicitly 0
-  if (not $state->{_num_contains} and ($schema->{minContains}//1) > 0) {
+  if (not $state->{_num_contains} and (($schema->{minContains}//1) > 0
+      or $state->{spec_version} and $state->{spec_version} eq 'draft7')) {
     push @{$state->{errors}}, @errors;
     return E($state, 'subschema is not valid against any item');
   }
@@ -1308,6 +1389,8 @@ Supported values for this option, and the corresponding values for the C<$schema
 =for :list
 * L<C<draft2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
   corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>.
+* L<C<draft7>|https://json-schema.org/specification-links.html#draft-7>,
+  corresponding to metaschema C<http://json-schema.org/draft-07/schema#>
 
 Defaults to undef.
 

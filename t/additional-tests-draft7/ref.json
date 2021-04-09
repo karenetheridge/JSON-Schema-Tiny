@@ -1,0 +1,50 @@
+[
+    {
+        "description": "naive replacement of $ref with its destination is not correct",
+        "schema": {
+            "$defs": {
+                "a_string": { "type": "string" }
+            },
+            "enum": [
+                { "$ref": "#/$defs/a_string" }
+            ]
+        },
+        "tests": [
+            {
+                "description": "do not evaluate the $ref inside the enum",
+                "data": "this is a string",
+                "valid": false
+            },
+            {
+                "description": "match the enum exactly",
+                "data": { "$ref": "#/$defs/a_string" },
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "$ref to non-schema locations are allowed, even if a bad idea",
+        "schema": {
+            "default": {
+                "type": "string"
+            },
+            "properties": {
+                "foo": {
+                    "$ref": "#/default"
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "$ref to non-schema location, valid result",
+                "data": { "foo": "a string" },
+                "valid": true
+            },
+            {
+                "description": "$ref to non-schema location, invalid result",
+                "data": { "foo": 1 },
+                "valid": false
+            }
+        ]
+    }
+]
