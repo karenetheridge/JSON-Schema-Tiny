@@ -22,6 +22,7 @@ use JSON::MaybeXS 1.004001 'is_bool';
 use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 'any';
+use Scalar::Util 'blessed';
 use namespace::clean;
 use Exporter 5.57 'import';
 
@@ -32,7 +33,19 @@ our $SHORT_CIRCUIT = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
 our $MOJO_BOOLEANS = 0;
 
+sub new {
+  my ($class, %args) = @_;
+  bless(\%args, $class);
+}
+
 sub evaluate {
+  local $BOOLEAN_RESULT = $_[0]->{boolean_result} // $BOOLEAN_RESULT,
+  local $SHORT_CIRCUIT = $_[0]->{short_circuit} // $SHORT_CIRCUIT,
+  local $MAX_TRAVERSAL_DEPTH = $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH,
+  local $MOJO_BOOLEANS = $_[0]->{mojo_booleans} // $MOJO_BOOLEANS,
+  shift
+    if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
+
   my ($data, $schema) = @_;
 
   croak 'evaluate called in void context' if not defined wantarray;
