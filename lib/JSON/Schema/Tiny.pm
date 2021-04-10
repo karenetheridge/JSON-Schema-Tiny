@@ -957,7 +957,7 @@ sub assert_array_schemas {
   my ($schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'array');
-  abort($state, '"%s" array is empty') if not @{$schema->{$state->{keyword}}};
+  abort($state, '%s array is empty', $state->{keyword}) if not @{$schema->{$state->{keyword}}};
   return 1;
 }
 
