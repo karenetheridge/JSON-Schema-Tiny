@@ -574,7 +574,7 @@ sub _eval_keyword_prefixItems {
     last if $state->{short_circuit} and not exists $schema->{additionalItems};
   }
 
-  return E($state, 'subschema is not valid against all items') if not $valid;
+  return E($state, 'not all items are valid') if not $valid;
   return 1;
 }
 
