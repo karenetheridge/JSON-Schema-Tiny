@@ -78,7 +78,7 @@ sub _eval {
   # do not propagate upwards changes to depth, traversed paths,
   # but additions to errors are by reference and will be retained
   $state = { %$state };
-  delete $state->{keyword};
+  delete @{$state}{'keyword', grep /^_/, keys %$state};
 
   abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
     if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
@@ -109,13 +109,15 @@ sub _eval {
       maxProperties minProperties required dependentRequired),
     # APPLICATOR KEYWORDS
     qw(allOf anyOf oneOf not if dependentSchemas
-      items contains
+      items additionalItems contains
       properties patternProperties additionalProperties propertyNames),
   ) {
     next if not exists $schema->{$keyword};
 
+    $state->{keyword} = $keyword;
+
     my $sub = __PACKAGE__->can('_eval_keyword_'.($keyword =~ s/^\$//r));
-    $valid = 0 if not $sub->($data, $schema, +{ %$state, keyword => $keyword });
+    $valid = 0 if not $sub->($data, $schema, $state);
 
     last if not $valid and $state->{short_circuit};
   }
@@ -549,11 +551,12 @@ sub _eval_keyword_prefixItems {
 
   return 1 if not is_type('array', $data);
 
-  my $last_index = -1;
+  $state->{_last_items_index} = -1;
   my $valid = 1;
+
   foreach my $idx (0 .. $#{$data}) {
     last if $idx > $#{$schema->{$state->{keyword}}};
-    $last_index = $idx;
+    $state->{_last_items_index} = $idx;
 
     if (is_type('boolean', $schema->{$state->{keyword}}[$idx])) {
       next if $schema->{$state->{keyword}}[$idx];
@@ -571,12 +574,18 @@ sub _eval_keyword_prefixItems {
     last if $state->{short_circuit} and not exists $schema->{additionalItems};
   }
 
-  E($state, 'subschema is not valid against all items') if not $valid;
+  return E($state, 'subschema is not valid against all items') if not $valid;
+  return 1;
+}
 
-  return $valid if not exists $schema->{additionalItems} or $last_index == $#{$data};
-  $state->{keyword} = 'additionalItems';
+sub _eval_keyword_additionalItems {
+  my ($data, $schema, $state) = @_;
 
-  foreach my $idx ($last_index+1 .. $#{$data}) {
+  return 1 if not is_type('array', $data);
+  return 1 if not exists $state->{_last_items_index} or $state->{_last_items_index} == $#{$data};
+  my $valid = 1;
+
+  foreach my $idx ($state->{_last_items_index}+1 .. $#{$data}) {
     if (is_type('boolean', $schema->{additionalItems})) {
       next if $schema->{additionalItems};
       $valid = E({ %$state, data_path => $state->{data_path}.'/'.$idx },
