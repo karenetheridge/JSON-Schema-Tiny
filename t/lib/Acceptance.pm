@@ -10,6 +10,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More;
 use List::Util 1.50 'head';
+use Path::Tiny;
 
 BEGIN {
   my @variables = qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING);
@@ -20,7 +21,7 @@ BEGIN {
 }
 
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning';
-use Test::JSON::Schema::Acceptance 1.004;
+use Test::JSON::Schema::Acceptance 1.007;
 use JSON::Schema::Tiny 'evaluate';
 
 sub acceptance_tests {
@@ -76,6 +77,9 @@ sub acceptance_tests {
     @ARGV ? (tests => { file => \@ARGV }) : (),
     %options,
   );
+
+  path($ENV{RESULTS_FILE} // ('t/results/'.$version.'.txt'))->spew_utf8($accepter->results_text)
+    if -d '.git' or $ENV{AUTHOR_TESTING} or $ENV{RELEASE_TESTING};
 }
 
 END {

@@ -1,0 +1,13 @@
+Results using Test::JSON::Schema::Acceptance 1.007
+using custom test directory: /Volumes/amaretto/Users/ether/git/JSON-Schema-Tiny/t/additional-tests
+optional tests included: no
+
+filename                     pass  todo-fail  fail
+--------------------------------------------------
+invalid-input.json              2          0     0
+keyword-independence.json     688          0     0
+loose-types-const-enum.json     8          0     0
+short-circuit.json             16          0     0
+unicode.json                    4          0     0
+--------------------------------------------------
+TOTAL                         718          0     0
