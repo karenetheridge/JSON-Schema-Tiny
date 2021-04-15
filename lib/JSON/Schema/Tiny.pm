@@ -521,39 +521,26 @@ sub _eval_keyword_dependentSchemas {
 sub _eval_keyword_items {
   my ($data, $schema, $state) = @_;
 
-  # TODO: for draft2020-12, reject the array form of items
-  goto \&_eval_keyword_prefixItems if is_plain_arrayref($schema->{items});
+  goto \&_eval_keyword__items_array_schemas if is_plain_arrayref($schema->{items});
 
-  return 1 if not is_type('array', $data);
-
-  my $valid = 1;
-  foreach my $idx (0 .. $#{$data}) {
-    if (is_type('boolean', $schema->{items})) {
-      next if $schema->{items};
-      $valid = E({ %$state, data_path => $state->{data_path}.'/'.$idx }, 'item not permitted');
-    }
-    else {
-      next if _eval($data->[$idx], $schema->{items}, +{ %$state,
-          data_path => $state->{data_path}.'/'.$idx,
-          schema_path => $state->{schema_path}.'/items' });
-      $valid = 0;
-    }
-
-    last if $state->{short_circuit};
-  }
-
-  return E($state, 'subschema is not valid against all items') if not $valid;
-  return 1;
+  $state->{_last_items_index} //= -1;
+  goto \&_eval_keyword__items_schema;
 }
 
-sub _eval_keyword_prefixItems {
+sub _eval_keyword_additionalItems {
   my ($data, $schema, $state) = @_;
 
-  return if not assert_array_schemas($schema, $state);
+  return 1 if not exists $state->{_last_items_index};
+  goto \&_eval_keyword__items_schema;
+}
 
+# array-based items
+sub _eval_keyword__items_array_schemas {
+  my ($data, $schema, $state) = @_;
+
+  abort($state, '%s array is empty', $state->{keyword}) if not @{$schema->{$state->{keyword}}};
   return 1 if not is_type('array', $data);
 
-  $state->{_last_items_index} = -1;
   my $valid = 1;
 
   foreach my $idx (0 .. $#{$data}) {
@@ -567,8 +554,7 @@ sub _eval_keyword_prefixItems {
     }
     else {
       next if _eval($data->[$idx], $schema->{$state->{keyword}}[$idx],
-        +{ %$state,
-          data_path => $state->{data_path}.'/'.$idx,
+        +{ %$state, data_path => $state->{data_path}.'/'.$idx,
           schema_path => $state->{schema_path}.'/'.$state->{keyword}.'/'.$idx });
     }
 
@@ -580,29 +566,35 @@ sub _eval_keyword_prefixItems {
   return 1;
 }
 
-sub _eval_keyword_additionalItems {
+# schema-based items and additionalItems
+sub _eval_keyword__items_schema {
   my ($data, $schema, $state) = @_;
 
   return 1 if not is_type('array', $data);
-  return 1 if not exists $state->{_last_items_index} or $state->{_last_items_index} == $#{$data};
+  return 1 if $state->{_last_items_index} == $#{$data};
+
   my $valid = 1;
 
   foreach my $idx ($state->{_last_items_index}+1 .. $#{$data}) {
-    if (is_type('boolean', $schema->{additionalItems})) {
-      next if $schema->{additionalItems};
+    if (is_type('boolean', $schema->{$state->{keyword}})) {
+      next if $schema->{$state->{keyword}};
       $valid = E({ %$state, data_path => $state->{data_path}.'/'.$idx },
-        'additional item not permitted');
+        '%sitem not permitted', $state->{keyword} eq 'additionalItems' ? 'additional ' : '');
     }
     else {
-      next if _eval($data->[$idx], $schema->{additionalItems},
+      next if _eval($data->[$idx], $schema->{$state->{keyword}},
         +{ %$state, data_path => $state->{data_path}.'/'.$idx,
-        schema_path => $state->{schema_path}.'/additionalItems' });
+          schema_path => $state->{schema_path}.'/'.$state->{keyword} });
       $valid = 0;
     }
+
     last if $state->{short_circuit};
   }
 
-  return E($state, 'subschema is not valid against all additional items') if not $valid;
+  $state->{_last_items_index} = $#{$data};
+
+  return E($state, 'subschema is not valid against all %sitems',
+    $state->{keyword} eq 'additionalItems' ? 'additional ' : '') if not $valid;
   return 1;
 }
 
