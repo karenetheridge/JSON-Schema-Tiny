@@ -103,16 +103,16 @@ sub _eval {
   foreach my $keyword (
     # CORE KEYWORDS
     qw($schema $ref $defs),
+    # APPLICATOR KEYWORDS
+    qw(allOf anyOf oneOf not if dependentSchemas
+      items additionalItems contains
+      properties patternProperties additionalProperties propertyNames),
     # VALIDATOR KEYWORDS
     qw(type enum const
       multipleOf maximum exclusiveMaximum minimum exclusiveMinimum
       maxLength minLength pattern
       maxItems minItems uniqueItems
       maxProperties minProperties required dependentRequired),
-    # APPLICATOR KEYWORDS
-    qw(allOf anyOf oneOf not if dependentSchemas
-      items additionalItems contains
-      properties patternProperties additionalProperties propertyNames),
   ) {
     next if not exists $schema->{$keyword};
 
