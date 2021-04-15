@@ -171,14 +171,6 @@ subtest '$MOJO_BOOLEANS = 1' => sub {
     { valid => true },
     'items are still all considered unique even though some are treated identically',
   );
-
-
-
-  # compare \0 to enum: [ true ]
-  # or const: true
-  # also check uniqueItems when mixing, or not mixing.
-
-  # also check \0 to enum: [ \0 ] <-- invalid.
 };
 
 done_testing;
