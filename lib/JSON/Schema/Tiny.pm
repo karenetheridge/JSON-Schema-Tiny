@@ -112,6 +112,7 @@ sub _eval {
       multipleOf maximum exclusiveMaximum minimum exclusiveMinimum
       maxLength minLength pattern
       maxItems minItems uniqueItems
+      maxContains minContains
       maxProperties minProperties required dependentRequired),
   ) {
     next if not exists $schema->{$keyword};
@@ -338,6 +339,32 @@ sub _eval_keyword_uniqueItems {
   return 1 if not $schema->{uniqueItems};
   return 1 if is_elements_unique($data, my $equal_indices = []);
   return E($state, 'items at indices %d and %d are not unique', @$equal_indices);
+}
+
+sub _eval_keyword_maxContains {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_non_negative_integer($schema, $state);
+  return 1 if not exists $state->{_num_contains};
+  return 1 if not is_type('array', $data);
+
+  return E($state, 'contains too many matching items')
+    if $state->{_num_contains} > $schema->{maxContains};
+
+  return 1;
+}
+
+sub _eval_keyword_minContains {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_non_negative_integer($schema, $state);
+  return 1 if not exists $state->{_num_contains};
+  return 1 if not is_type('array', $data);
+
+  return E($state, 'contains too few matching items')
+    if $state->{_num_contains} < $schema->{minContains};
+
+  return 1;
 }
 
 sub _eval_keyword_maxProperties {
@@ -601,47 +628,30 @@ sub _eval_keyword__items_schema {
 sub _eval_keyword_contains {
   my ($data, $schema, $state) = @_;
 
-  return if exists $schema->{minContains}
-    and not assert_non_negative_integer($schema, { %$state, keyword => 'minContains' });
-  return if exists $schema->{maxContains}
-    and not assert_non_negative_integer($schema, { %$state, keyword => 'maxContains' });
-
   return 1 if not is_type('array', $data);
 
-  my $num_valid = 0;
+  $state->{_num_contains} = 0;
   my @errors;
   foreach my $idx (0 .. $#{$data}) {
     if (_eval($data->[$idx], $schema->{contains},
         +{ %$state, errors => \@errors,
           data_path => $state->{data_path}.'/'.$idx,
           schema_path => $state->{schema_path}.'/contains' })) {
-      ++$num_valid;
+      ++$state->{_num_contains};
+
       last if $state->{short_circuit}
-        and (not exists $schema->{maxContains} or $num_valid > $schema->{maxContains})
-        and ($num_valid >= ($schema->{minContains}//1));
+        and (not exists $schema->{maxContains} or $state->{_num_contains} > $schema->{maxContains})
+        and ($state->{_num_contains} >= ($schema->{minContains}//1));
     }
   }
 
-  my $valid = 1;
-  # note: no items contained is only valid when minContains=0
-  if (not $num_valid and ($schema->{minContains}//1) > 0) {
-    $valid = 0;
+  # note: no items contained is only valid when minContains is explicitly 0
+  if (not $state->{_num_contains} and ($schema->{minContains}//1) > 0) {
     push @{$state->{errors}}, @errors;
-    E($state, 'subschema is not valid against any item');
-    return 0 if $state->{short_circuit};
+    return E($state, 'subschema is not valid against any item');
   }
 
-  if (exists $schema->{maxContains} and $num_valid > $schema->{maxContains}) {
-    $valid = E({ %$state, keyword => 'maxContains' }, 'contains too many matching items');
-    return 0 if $state->{short_circuit};
-  }
-
-  if ($num_valid < ($schema->{minContains}//1)) {
-    $valid = E({ %$state, keyword => 'minContains' }, 'contains too few matching items');
-    return 0 if $state->{short_circuit};
-  }
-
-  return $valid;
+  return 1;
 }
 
 sub _eval_keyword_properties {
