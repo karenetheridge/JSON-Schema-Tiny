@@ -624,13 +624,13 @@ sub _eval_keyword_contains {
       ++$num_valid;
       last if $state->{short_circuit}
         and (not exists $schema->{maxContains} or $num_valid > $schema->{maxContains})
-        and ($num_valid >= ($schema->{minContains} // 1));
+        and ($num_valid >= ($schema->{minContains}//1));
     }
   }
 
   my $valid = 1;
   # note: no items contained is only valid when minContains=0
-  if (not $num_valid and ($schema->{minContains} // 1) > 0) {
+  if (not $num_valid and ($schema->{minContains}//1) > 0) {
     $valid = 0;
     push @{$state->{errors}}, @errors;
     E($state, 'subschema is not valid against any item');
@@ -642,7 +642,7 @@ sub _eval_keyword_contains {
     return 0 if $state->{short_circuit};
   }
 
-  if ($num_valid < ($schema->{minContains} // 1)) {
+  if ($num_valid < ($schema->{minContains}//1)) {
     $valid = E({ %$state, keyword => 'minContains' }, 'contains too few matching items');
     return 0 if $state->{short_circuit};
   }
@@ -915,7 +915,7 @@ sub E {
     .jsonp($state->{schema_path}, $state->{keyword}, delete $state->{_schema_path_suffix});
 
   undef $uri if $uri eq '' and $keyword_location eq ''
-    or ($uri->fragment // '') eq $keyword_location;
+    or ($uri->fragment//'') eq $keyword_location;
 
   push @{$state->{errors}}, {
     instanceLocation => $state->{data_path},
