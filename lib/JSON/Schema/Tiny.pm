@@ -64,6 +64,8 @@ sub evaluate {
     $valid = 0;
   }
 
+  warn 'result is false but there are no errors' if not $valid and not @{$state->{errors}};
+
   return $BOOLEAN_RESULT ? $valid : +{
     valid => $valid ? JSON::PP::true : JSON::PP::false,
     $valid ? () : (errors => $state->{errors}),
