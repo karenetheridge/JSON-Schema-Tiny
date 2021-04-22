@@ -185,6 +185,7 @@ sub _eval_keyword_type {
   my ($data, $schema, $state) = @_;
 
   if (is_plain_arrayref($schema->{type})) {
+    abort($state, 'type array is empty') if not @{$schema->{type}};
     foreach my $type (@{$schema->{type}}) {
       abort($state, 'unrecognized type "%s"', $type//'<null>')
         if not any { ($type//'') eq $_ } qw(null boolean object array string number integer);
@@ -198,6 +199,7 @@ sub _eval_keyword_type {
     return E($state, 'wrong type (expected one of %s)', join(', ', @{$schema->{type}}));
   }
   else {
+    return if not assert_keyword_type($state, $schema, 'string');
     abort($state, 'unrecognized type "%s"', $schema->{type}//'<null>')
       if not any { ($schema->{type}//'') eq $_ } qw(null boolean object array string number integer);
 
