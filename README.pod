@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.002
+version 0.003
 
 =head1 SYNOPSIS
 
@@ -162,7 +162,7 @@ C<unevaluatedItems> and C<unevaluatedProperties> (which require annotation suppo
 
 =item *
 
-C<format>
+C<format> (does not cause an error when used)
 
 =back
 
@@ -205,6 +205,10 @@ L<Test::JSON::Schema::Acceptance>: contains the official JSON Schema test suite
 =item *
 
 L<https://json-schema.org>
+
+=item *
+
+L<Understanding JSON Schema|https://json-schema.org/understanding-json-schema>: tutorial-focused documentation
 
 =back
 
