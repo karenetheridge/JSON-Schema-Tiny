@@ -29,6 +29,7 @@ sub acceptance_tests {
 
   my $version = delete $options{specification};
 
+  local $Test::Builder::Level = $Test::Builder::Level + 1;
   my $accepter = Test::JSON::Schema::Acceptance->new(
     $ENV{TEST_DIR}
       ? (test_dir => $ENV{TEST_DIR})
