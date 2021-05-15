@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.003     2021-05-15 18:17:16Z
           - fixed error strings used for failing "dependentRequired"
           - keywords in the applicator vocabulary are now applied before the
