@@ -122,6 +122,7 @@ sub _eval {
     my $sub = __PACKAGE__->can('_eval_keyword_'.($keyword =~ s/^\$//r));
     $valid = 0 if not $sub->($data, $schema, $state);
 
+    warn 'result is false but there are no errors' if not $valid and not @{$state->{errors}};
     last if not $valid and $state->{short_circuit};
   }
 
