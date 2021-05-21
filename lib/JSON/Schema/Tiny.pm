@@ -1000,14 +1000,20 @@ __END__
 
 =head1 SYNOPSIS
 
-  use JSON::Schema::Tiny qw(evaluate);
-
   my $data = { hello => 1 };
   my $schema = {
     type => "object",
     properties => { hello => { type => "integer" } },
   };
+
+  # functional interface:
+  use JSON::Schema::Tiny qw(evaluate);
   my $result = evaluate($data, $schema); # { valid => true }
+
+  # object-oriented interface:
+  use JSON::Schema::Tiny;
+  my $js = JSON::Schema::Tiny->new;
+  my $result = $js->evaluate($data, $schema); # { valid => true }
 
 =head1 DESCRIPTION
 
@@ -1019,6 +1025,7 @@ specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
 assert_keyword_type assert_pattern assert_non_negative_integer assert_array_schemas
+new
 
 =head2 evaluate
 
@@ -1067,7 +1074,8 @@ failure).
 =head1 OPTIONS
 
 All options are available as package-scoped global variables. Use L<local|perlfunc/local> to
-configure them for a local scope.
+configure them for a local scope. They may also be set via the constructor, as lower-cased values in
+a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_depth => 10); >>
 
 =head2 C<$BOOLEAN_RESULT>
 
