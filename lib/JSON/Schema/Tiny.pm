@@ -39,6 +39,8 @@ sub new {
 }
 
 sub evaluate {
+  croak 'evaluate called in void context' if not defined wantarray;
+
   local $BOOLEAN_RESULT = $_[0]->{boolean_result} // $BOOLEAN_RESULT,
   local $SHORT_CIRCUIT = $_[0]->{short_circuit} // $SHORT_CIRCUIT,
   local $MAX_TRAVERSAL_DEPTH = $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH,
@@ -46,9 +48,8 @@ sub evaluate {
   shift
     if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
 
+  die 'insufficient arguments' if @_ < 2;
   my ($data, $schema) = @_;
-
-  croak 'evaluate called in void context' if not defined wantarray;
 
   my $state = {
     depth => 0,
@@ -88,6 +89,8 @@ sub evaluate {
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 sub _eval {
+  croak '_eval called in void context' if not defined wantarray;
+  die 'insufficient arguments' if @_ < 3;
   my ($data, $schema, $state) = @_;
 
   # do not propagate upwards changes to depth, traversed paths,
