@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.004     2021-05-21 05:03:42Z
           - new optional OO interface for options, as an alternative to global
             variables
