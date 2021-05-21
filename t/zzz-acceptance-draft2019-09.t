@@ -52,15 +52,6 @@ acceptance_tests(
   ],
 );
 
-
-# date        Test::JSON::Schema::Acceptance version
-#                    JSON::Schema::Tiny version
-#                           result count of running *all* tests (with no TODOs)
-# ----------  -----  -----  ---------------------------------------------------
-# 2021-03-26  1.005  0.001  Looks like you failed 17 tests of 1043.
-# 2021-04-08  1.006  0.002  Looks like you failed 17 tests of 1053.
-
-
 done_testing;
 __END__
 
