@@ -1,6 +1,8 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - new optional OO interface for options, as an alternative to global
+            variables
 
 0.003     2021-05-15 18:17:16Z
           - fixed error strings used for failing "dependentRequired"

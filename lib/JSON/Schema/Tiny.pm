@@ -22,6 +22,7 @@ use JSON::MaybeXS 1.004001 'is_bool';
 use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 'any';
+use Scalar::Util 'blessed';
 use namespace::clean;
 use Exporter 5.57 'import';
 
@@ -32,10 +33,23 @@ our $SHORT_CIRCUIT = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
 our $MOJO_BOOLEANS = 0;
 
-sub evaluate {
-  my ($data, $schema) = @_;
+sub new {
+  my ($class, %args) = @_;
+  bless(\%args, $class);
+}
 
+sub evaluate {
   croak 'evaluate called in void context' if not defined wantarray;
+
+  local $BOOLEAN_RESULT = $_[0]->{boolean_result} // $BOOLEAN_RESULT,
+  local $SHORT_CIRCUIT = $_[0]->{short_circuit} // $SHORT_CIRCUIT,
+  local $MAX_TRAVERSAL_DEPTH = $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH,
+  local $MOJO_BOOLEANS = $_[0]->{mojo_booleans} // $MOJO_BOOLEANS,
+  shift
+    if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
+
+  die 'insufficient arguments' if @_ < 2;
+  my ($data, $schema) = @_;
 
   my $state = {
     depth => 0,
@@ -75,6 +89,8 @@ sub evaluate {
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
 sub _eval {
+  croak '_eval called in void context' if not defined wantarray;
+  die 'insufficient arguments' if @_ < 3;
   my ($data, $schema, $state) = @_;
 
   # do not propagate upwards changes to depth, traversed paths,
@@ -987,14 +1003,20 @@ __END__
 
 =head1 SYNOPSIS
 
-  use JSON::Schema::Tiny qw(evaluate);
-
   my $data = { hello => 1 };
   my $schema = {
     type => "object",
     properties => { hello => { type => "integer" } },
   };
+
+  # functional interface:
+  use JSON::Schema::Tiny qw(evaluate);
   my $result = evaluate($data, $schema); # { valid => true }
+
+  # object-oriented interface:
+  use JSON::Schema::Tiny;
+  my $js = JSON::Schema::Tiny->new;
+  my $result = $js->evaluate($data, $schema); # { valid => true }
 
 =head1 DESCRIPTION
 
@@ -1006,6 +1028,7 @@ specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
 assert_keyword_type assert_pattern assert_non_negative_integer assert_array_schemas
+new
 
 =head2 evaluate
 
@@ -1054,7 +1077,8 @@ failure).
 =head1 OPTIONS
 
 All options are available as package-scoped global variables. Use L<local|perlfunc/local> to
-configure them for a local scope.
+configure them for a local scope. They may also be set via the constructor, as lower-cased values in
+a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_depth => 10); >>
 
 =head2 C<$BOOLEAN_RESULT>
 
