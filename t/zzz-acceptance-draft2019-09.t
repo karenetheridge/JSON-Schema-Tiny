@@ -8,14 +8,18 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More;
+use List::Util 1.50 'head';
 use Config;
 use lib 't/lib';
 use Acceptance;
 
-foreach my $env (qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING NO_TODO TEST_DIR NO_SHORT_CIRCUIT)) {
-  note $env.': '.($ENV{$env} // '');
+BEGIN {
+  my @variables = qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING);
+
+  plan skip_all => 'These tests may fail if the test suite continues to evolve! They should only be run with '
+      .join(', ', map $_.'=1', head(-1, @variables)).' or '.$variables[-1].'=1'
+    if not -d '.git' and not grep $ENV{$_}, @variables;
 }
-note '';
 
 acceptance_tests(
   specification => 'draft2019-09',

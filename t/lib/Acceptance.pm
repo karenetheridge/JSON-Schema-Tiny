@@ -9,20 +9,18 @@ no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use Test::More;
-use List::Util 1.50 'head';
 use Path::Tiny;
-
-BEGIN {
-  my @variables = qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING);
-
-  plan skip_all => 'These tests may fail if the test suite continues to evolve! They should only be run with '
-      .join(', ', map $_.'=1', head(-1, @variables)).' or '.$variables[-1].'=1'
-    if not -d '.git' and not grep $ENV{$_}, @variables;
-}
 
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning';
 use Test::JSON::Schema::Acceptance 1.007;
 use JSON::Schema::Tiny 'evaluate';
+
+BEGIN {
+  foreach my $env (qw(AUTHOR_TESTING AUTOMATED_TESTING EXTENDED_TESTING NO_TODO TEST_DIR NO_SHORT_CIRCUIT)) {
+    note $env.': '.($ENV{$env}//'');
+  }
+  note '';
+}
 
 sub acceptance_tests {
   my (%options) = @_;
