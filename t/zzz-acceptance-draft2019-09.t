@@ -20,6 +20,7 @@ note '';
 acceptance_tests(
   specification => 'draft2019-09',
   todo_tests => [
+    $ENV{NO_TODO} ? () : (
     { file => [ qw(
         anchor.json
         id.json
@@ -28,7 +29,6 @@ acceptance_tests(
         unevaluatedItems.json
         unevaluatedProperties.json
       ) ] },
-    $ENV{NO_TODO} ? () : (
     { file => 'defs.json', group_description => [ 'valid definition', 'validate definition against metaschema' ] },
     { file => 'ref.json', group_description => [ 'remote ref, containing refs itself', 'Recursive references between schemas' ] },
     { file => 'unknownKeyword.json', group_description => '$id inside an unknown keyword is not a real identifier', test_description => 'type matches second anyOf, which has a real schema in it' },
