@@ -134,11 +134,15 @@ sub _eval {
     next if not exists $schema->{$keyword};
 
     $state->{keyword} = $keyword;
+    my $error_count = @{$state->{errors}};
 
     my $sub = __PACKAGE__->can('_eval_keyword_'.($keyword =~ s/^\$//r));
-    $valid = 0 if not $sub->($data, $schema, $state);
+    if (not $sub->($data, $schema, $state)) {
+      warn 'result is false but there are no errors (keyword: '.$keyword.')'
+        if $error_count == @{$state->{errors}};
+      $valid = 0;
+    }
 
-    warn 'result is false but there are no errors' if not $valid and not @{$state->{errors}};
     last if not $valid and $state->{short_circuit};
   }
 
