@@ -15,9 +15,9 @@ use Helper;
 
 foreach my $keyword (
     # CORE KEYWORDS
-    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary $dynamicAnchor $dynamicRef definitions),
+    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary),
     # APPLICATOR KEYWORDS
-    qw(dependencies unevaluatedItems unevaluatedProperties),
+    qw(unevaluatedItems unevaluatedProperties),
 ) {
   cmp_deeply(
     evaluate(true, { $keyword => 1 }),

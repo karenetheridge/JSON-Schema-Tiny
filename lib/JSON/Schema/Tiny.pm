@@ -149,9 +149,9 @@ sub _eval {
   # UNSUPPORTED KEYWORDS
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary $dynamicAnchor $dynamicRef definitions),
+    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary),
     # APPLICATOR KEYWORDS
-    qw(dependencies prefixItems unevaluatedItems unevaluatedProperties),
+    qw(unevaluatedItems unevaluatedProperties),
   ) {
     next if not exists $schema->{$keyword};
     abort({ %$state, keyword => $keyword }, 'keyword not supported');
