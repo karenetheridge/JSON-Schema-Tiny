@@ -45,7 +45,7 @@ pattern.json                          9          0     0
 patternProperties.json               22          0     0
 properties.json                      20          0     0
 propertyNames.json                   10          0     0
-recursiveRef.json                    13         19     0
+recursiveRef.json                    17         15     0
 ref.json                             33          2     0
 refRemote.json                        7          8     0
 required.json                         9          0     0
@@ -60,4 +60,4 @@ optional/float-overflow.json          0          1     0
 optional/non-bmp-regex.json          12          0     0
 optional/refOfUnknownKeyword.json     4          0     0
 --------------------------------------------------------
-TOTAL                               955        114     0
+TOTAL                               959        110     0

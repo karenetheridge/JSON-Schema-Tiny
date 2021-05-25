@@ -3,6 +3,8 @@ Revision history for JSON-Schema-Tiny
 {{$NEXT}}
           - errors are no longer generated on the presence of unsupported
             keywords from other draft specification versions
+          - now checking syntax for the keywords: $id, $anchor,
+            $recursiveAnchor, $vocabulary, $comment
 
 0.004     2021-05-21 05:03:42Z
           - new optional OO interface for options, as an alternative to global

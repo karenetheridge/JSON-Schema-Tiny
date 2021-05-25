@@ -118,7 +118,7 @@ sub _eval {
 
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($schema $ref $defs),
+    qw($schema $ref $id $anchor $recursiveAnchor $vocabulary $comment $defs),
     # APPLICATOR KEYWORDS
     qw(allOf anyOf oneOf not if dependentSchemas
       items additionalItems contains
@@ -149,7 +149,7 @@ sub _eval {
   # UNSUPPORTED KEYWORDS
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary),
+    '$recursiveRef',
     # APPLICATOR KEYWORDS
     qw(unevaluatedItems unevaluatedProperties),
   ) {
@@ -194,6 +194,64 @@ sub _eval_keyword_ref {
       canonical_schema_uri => $uri,
       schema_path => '',
     });
+}
+
+sub _eval_keyword_id {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'string');
+
+  abort($state, '$id value "%s" cannot have a non-empty fragment', $schema->{'$id'})
+    if length Mojo::URL->new($schema->{'$id'})->fragment;
+  return 1;
+}
+
+sub _eval_keyword_anchor {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'string');
+
+  return 1 if ($schema->{'$anchor'}//'') =~ /^[A-Za-z][A-Za-z0-9_:.-]*$/;
+  abort($state, '%s value does not match required syntax', $state->{keyword});
+}
+
+sub _eval_keyword_recursiveAnchor {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'boolean');
+  return 1 if not $schema->{'$recursiveAnchor'};
+
+  # this is required because the location is used as the base URI for future resolution
+  # of $recursiveRef, and the fragment would be disregarded in the base
+  abort($state, '"$recursiveAnchor" keyword used without "$id"')
+    if not exists $schema->{'$id'};
+
+  return 1;
+}
+
+sub _eval_keyword_vocabulary {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'object');
+
+  foreach my $property (sort keys %{$schema->{'$vocabulary'}}) {
+    abort($state, '$vocabulary/%s value is not a boolean', $property)
+      if not is_type('boolean', $schema->{'$vocabulary'}{$property});
+
+    assert_uri($state, $schema, $property);
+  }
+
+  abort($state, '$vocabulary can only appear at the schema resource root')
+    if length($state->{schema_path});
+
+  abort($state, '$vocabulary can only appear at the document root')
+    if length($state->{traversed_schema_path}.$state->{schema_path});
+}
+
+sub _eval_keyword_comment {
+  my ($data, $schema, $state) = @_;
+  return if not assert_keyword_type($state, $schema, 'string');
+  return 1;
 }
 
 sub _eval_keyword_defs {
@@ -980,6 +1038,25 @@ sub assert_pattern {
   return 1;
 }
 
+sub assert_uri {
+  my ($state, $schema, $override) = @_;
+
+  my $string = $override // $schema->{$state->{keyword}};
+  my $uri = Mojo::URL->new($string);
+
+  abort($state, '"%s" is not a valid URI', $string)
+    # see also uri format sub
+    if fc($uri->to_unsafe_string) ne fc($string)
+      or $string =~ /[^[:ascii:]]/
+      or not $uri->is_abs
+      or $string =~ /#/
+        and $string !~ m{#$}                          # empty fragment
+        and $string !~ m{#[A-Za-z][A-Za-z0-9_:.-]*$}  # plain-name fragment
+        and $string !~ m{#/(?:[^~]|~[01])*$};         # json pointer fragment
+
+  return 1;
+}
+
 sub assert_non_negative_integer {
   my ($schema, $state) = @_;
 
@@ -1031,7 +1108,7 @@ specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 =head1 FUNCTIONS
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
-assert_keyword_type assert_pattern assert_non_negative_integer assert_array_schemas
+assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
 new
 
 =head2 evaluate

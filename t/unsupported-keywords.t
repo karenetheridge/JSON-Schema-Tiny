@@ -15,7 +15,7 @@ use Helper;
 
 foreach my $keyword (
     # CORE KEYWORDS
-    qw($id $anchor $recursiveAnchor $recursiveRef $vocabulary),
+    '$recursiveRef',
     # APPLICATOR KEYWORDS
     qw(unevaluatedItems unevaluatedProperties),
 ) {
