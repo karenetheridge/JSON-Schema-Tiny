@@ -48,7 +48,7 @@ sub evaluate {
   shift
     if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
 
-  die 'insufficient arguments' if @_ < 2;
+  croak 'insufficient arguments' if @_ < 2;
   my ($data, $schema) = @_;
 
   my $state = {
@@ -90,7 +90,7 @@ sub evaluate {
 
 sub _eval {
   croak '_eval called in void context' if not defined wantarray;
-  die 'insufficient arguments' if @_ < 3;
+  croak 'insufficient arguments' if @_ < 3;
   my ($data, $schema, $state) = @_;
 
   # do not propagate upwards changes to depth, traversed paths,
