@@ -490,7 +490,7 @@ sub _eval_keyword_dependentRequired {
 
   return if not assert_keyword_type($state, $schema, 'object');
 
-  foreach my $property (keys %{$schema->{dependentRequired}}) {
+  foreach my $property (sort keys %{$schema->{dependentRequired}}) {
     E({ %$state, _schema_path_suffix => $property }, 'dependentRequired value is not an array'), next
       if not is_type('array', $schema->{dependentRequired}{$property});
 
@@ -506,7 +506,7 @@ sub _eval_keyword_dependentRequired {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (keys %{$schema->{dependentRequired}}) {
+  foreach my $property (sort keys %{$schema->{dependentRequired}}) {
     next if not exists $data->{$property};
 
     if (my @missing = grep !exists($data->{$_}), @{$schema->{dependentRequired}{$property}}) {
@@ -940,7 +940,7 @@ sub is_equal {
   if ($types[0] eq 'object') {
     return 0 if keys %$x != keys %$y;
     return 0 if not is_equal([ sort keys %$x ], [ sort keys %$y ]);
-    foreach my $property (keys %$x) {
+    foreach my $property (sort keys %$x) {
       $state->{path} = jsonp($path, $property);
       return 0 if not is_equal($x->{$property}, $y->{$property}, $state);
     }
