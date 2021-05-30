@@ -11,11 +11,17 @@ use Test::More;
 use lib 't/lib';
 use Acceptance;
 
-$ENV{TEST_DIR} //= 't/additional-tests-draft2019-09';
-$ENV{RESULTS_FILE} = 't/results/draft2019-09-additional-tests.txt';
+my $version = 'draft2019-09';
 
 acceptance_tests(
-  # no todo tests yet!
+  acceptance => {
+    include_optional => 0,
+    test_dir =>'t/additional-tests-'.$version,
+  },
+  output_file => $version.'-additional-tests.txt',
+  test => {
+    # no todo tests yet!
+  },
 );
 
 done_testing;
