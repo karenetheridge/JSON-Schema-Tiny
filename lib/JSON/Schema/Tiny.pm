@@ -201,8 +201,9 @@ sub _eval_keyword_id {
 
   return if not assert_keyword_type($state, $schema, 'string');
 
-  abort($state, '$id value "%s" cannot have a non-empty fragment', $schema->{'$id'})
-    if length Mojo::URL->new($schema->{'$id'})->fragment;
+  my $uri = Mojo::URL->new($schema->{'$id'});
+  abort($state, '$id value should not equal "%s"', $uri) if $uri eq '' or $uri eq '#';
+  abort($state, '$id value "%s" cannot have a non-empty fragment', $uri) if length $uri->fragment;
   return 1;
 }
 
