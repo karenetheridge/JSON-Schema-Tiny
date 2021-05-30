@@ -11,8 +11,8 @@ use Test::More;
 use lib 't/lib';
 use Acceptance;
 
-$ENV{TEST_DIR} //= 't/additional-tests';
-$ENV{RESULTS_FILE} = 't/results/additional-tests.txt';
+$ENV{TEST_DIR} //= 't/additional-tests-draft2019-09';
+$ENV{RESULTS_FILE} = 't/results/draft2019-09-additional-tests.txt';
 
 acceptance_tests(
   # no todo tests yet!
