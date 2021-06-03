@@ -10,6 +10,8 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Test::More;
 use lib 't/lib';
 use Acceptance;
+use Path::Tiny;
+use JSON::MaybeXS;
 
 my $version = 'draft2019-09';
 
@@ -20,7 +22,13 @@ acceptance_tests(
   },
   output_file => $version.'-additional-tests.txt',
   test => {
-    # no todo tests yet!
+    $ENV{NO_TODO} ? () : ( todo_tests => [
+      { file => 'keyword-independence.json', group_description => [
+        grep /unevaluated/,
+        map $_->{description},
+        decode_json(path('t/additional-tests-'.$version.'/keyword-independence.json')->slurp_raw)->@*
+      ] },
+    ] ),
   },
 );
 
