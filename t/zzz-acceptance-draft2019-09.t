@@ -37,7 +37,12 @@ acceptance_tests(
           unevaluatedProperties.json
         ) ] },
       { file => 'defs.json', group_description => [ 'valid definition', 'validate definition against metaschema' ] },
-      { file => 'ref.json', group_description => [ 'remote ref, containing refs itself', 'Recursive references between schemas' ] },
+      { file => 'ref.json', group_description => [
+          'remote ref, containing refs itself',
+          'Recursive references between schemas',
+          'refs with relative uris and defs',
+          'relative refs with absolute uris and defs',
+        ] },
       { file => 'unknownKeyword.json', group_description => '$id inside an unknown keyword is not a real identifier', test_description => 'type matches second anyOf, which has a real schema in it' },
       { file => [
           'optional/bignum.json',                     # TODO: see JSD2 issue #10
