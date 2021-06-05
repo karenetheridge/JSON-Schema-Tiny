@@ -204,6 +204,12 @@ sub _eval_keyword_id {
   my $uri = Mojo::URL->new($schema->{'$id'});
   abort($state, '$id value should not equal "%s"', $uri) if $uri eq '' or $uri eq '#';
   abort($state, '$id value "%s" cannot have a non-empty fragment', $uri) if length $uri->fragment;
+
+  $uri->fragment(undef);
+  $state->{initial_schema_uri} = $uri->is_abs ? $uri : $uri->to_abs($state->{initial_schema_uri});
+  $state->{traversed_schema_path} = $state->{traversed_schema_path}.$state->{schema_path};
+  $state->{schema_path} = '';
+
   return 1;
 }
 
@@ -1001,7 +1007,7 @@ sub E {
     .jsonp($state->{schema_path}, $state->{keyword}, delete $state->{_schema_path_suffix});
 
   undef $uri if $uri eq '' and $keyword_location eq ''
-    or ($uri->fragment//'') eq $keyword_location;
+    or ($uri->fragment//'') eq $keyword_location and $uri->clone->fragment(undef) eq '';
 
   push @{$state->{errors}}, {
     instanceLocation => $state->{data_path},
