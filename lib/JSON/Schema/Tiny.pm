@@ -218,8 +218,8 @@ sub _eval_keyword_anchor {
 
   return if not assert_keyword_type($state, $schema, 'string');
 
-  return 1 if ($schema->{'$anchor'}//'') =~ /^[A-Za-z][A-Za-z0-9_:.-]*$/;
-  abort($state, '%s value does not match required syntax', $state->{keyword});
+  return 1 if $schema->{'$anchor'} =~ /^[A-Za-z][A-Za-z0-9_:.-]*$/;
+  abort($state, '$anchor value does not match required syntax');
 }
 
 sub _eval_keyword_recursiveAnchor {
