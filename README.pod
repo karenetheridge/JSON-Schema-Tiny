@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.004
+version 0.005
 
 =head1 SYNOPSIS
 
@@ -38,7 +38,7 @@ specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 =head1 FUNCTIONS
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
-assert_keyword_type assert_pattern assert_non_negative_integer assert_array_schemas
+assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
 new
 
 =head2 evaluate
@@ -224,7 +224,7 @@ L<Understanding JSON Schema|https://json-schema.org/understanding-json-schema>: 
 
 Bugs may be submitted through L<https://github.com/karenetheridge/JSON-Schema-Tiny/issues>.
 
-I am also usually active on irc, as 'ether' at C<irc.perl.org> and C<irc.freenode.org>.
+I am also usually active on irc, as 'ether' at C<irc.perl.org> and C<irc.libera.chat>.
 
 =head1 AUTHOR
 
