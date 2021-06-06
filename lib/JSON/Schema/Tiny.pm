@@ -124,7 +124,7 @@ sub _eval {
 
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($id $schema $ref $anchor $recursiveAnchor $vocabulary $comment $defs),
+    qw($id $schema $anchor $recursiveAnchor $ref $recursiveRef $vocabulary $comment $defs),
     # APPLICATOR KEYWORDS
     qw(allOf anyOf oneOf not if dependentSchemas
       items additionalItems contains
@@ -154,8 +154,6 @@ sub _eval {
 
   # UNSUPPORTED KEYWORDS
   foreach my $keyword (
-    # CORE KEYWORDS
-    '$recursiveRef',
     # APPLICATOR KEYWORDS
     qw(unevaluatedItems unevaluatedProperties),
   ) {
@@ -204,7 +202,9 @@ sub _eval_keyword_ref {
     if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
 
   # the base of the $ref uri must be the same as the base of the root schema
-  abort($state, 'only same-document JSON pointers are supported in $ref')
+  # unfortunately this means that many uses of $ref won't work, because we don't
+  # track the locations of $ids in this or other documents.
+  abort($state, 'only same-document, same-base JSON pointers are supported in $ref')
     if $uri->clone->fragment(undef) ne Mojo::URL->new($state->{root_schema}{'$id'}//'');
 
   my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
@@ -213,6 +213,40 @@ sub _eval_keyword_ref {
   return _eval($data, $subschema,
     +{ %$state,
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$ref',
+      initial_schema_uri => $uri,
+      schema_path => '',
+    });
+}
+
+sub _eval_keyword_recursiveRef {
+  my ($data, $schema, $state) = @_;
+
+  return if not assert_keyword_type($state, $schema, 'string');
+
+  my $uri = Mojo::URL->new($schema->{'$recursiveRef'})->to_abs($state->{canonical_schema_uri});
+
+  abort($state, '$refs to anchors are not supported')
+    if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
+
+  # the base of the $ref uri must be the same as the base of the root schema.
+  # unfortunately this means that nearly all usecases of $recursiveRef won't work, because we don't
+  # track the locations of $ids in this or other documents.
+  abort($state, 'only same-document, same-base JSON pointers are supported in $recursiveRef')
+    if $uri->clone->fragment(undef) ne Mojo::URL->new($state->{root_schema}{'$id'}//'');
+
+  my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
+  abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
+
+  if (is_type('boolean', $subschema->{'$recursiveAnchor'}) and $subschema->{'$recursiveAnchor'}) {
+    $uri = Mojo::URL->new($schema->{'$recursiveRef'})
+      ->to_abs($state->{recursive_anchor_uri} // $state->{initial_schema_uri});
+    $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
+    abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
+  }
+
+  return _eval($data, $subschema,
+    +{ %$state,
+      traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$recursiveRef',
       initial_schema_uri => $uri,
       schema_path => '',
     });
@@ -254,6 +288,10 @@ sub _eval_keyword_recursiveAnchor {
   # of $recursiveRef, and the fragment would be disregarded in the base
   abort($state, '"$recursiveAnchor" keyword used without "$id"')
     if not exists $schema->{'$id'};
+
+  # record the canonical location of the current position, to be used against future resolution
+  # of a $recursiveRef uri -- as if it was the current location when we encounter a $ref.
+  $state->{recursive_anchor_uri} = canonical_schema_uri($state);
 
   return 1;
 }

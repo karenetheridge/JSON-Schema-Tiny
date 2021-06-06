@@ -14,8 +14,6 @@ use lib 't/lib';
 use Helper;
 
 foreach my $keyword (
-    # CORE KEYWORDS
-    '$recursiveRef',
     # APPLICATOR KEYWORDS
     qw(unevaluatedItems unevaluatedProperties),
 ) {
