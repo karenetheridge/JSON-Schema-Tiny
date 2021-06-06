@@ -275,6 +275,8 @@ sub _eval_keyword_vocabulary {
 
   abort($state, '$vocabulary can only appear at the document root')
     if length($state->{traversed_schema_path}.$state->{schema_path});
+
+  return 1;
 }
 
 sub _eval_keyword_comment {
