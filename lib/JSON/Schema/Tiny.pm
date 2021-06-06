@@ -129,6 +129,8 @@ sub _eval {
     qw(allOf anyOf oneOf not if dependentSchemas
       items additionalItems contains
       properties patternProperties additionalProperties propertyNames),
+    # UNEVALUATED KEYWORDS
+    qw(unevaluatedItems unevaluatedProperties),
     # VALIDATOR KEYWORDS
     qw(type enum const
       multipleOf maximum exclusiveMaximum minimum exclusiveMinimum
@@ -150,15 +152,6 @@ sub _eval {
     }
 
     last if not $valid and $state->{short_circuit};
-  }
-
-  # UNSUPPORTED KEYWORDS
-  foreach my $keyword (
-    # APPLICATOR KEYWORDS
-    qw(unevaluatedItems unevaluatedProperties),
-  ) {
-    next if not exists $schema->{$keyword};
-    abort({ %$state, keyword => $keyword }, 'keyword not supported');
   }
 
   # check for previously-supported but now removed keywords
@@ -921,6 +914,15 @@ sub _eval_keyword_propertyNames {
   return 1;
 }
 
+sub _eval_keyword_unevaluatedItems {
+  my ($data, $schema, $state) = @_;
+  abort($state, 'keyword not supported');
+}
+
+sub _eval_keyword_unevaluatedProperties {
+  my ($data, $schema, $state) = @_;
+  abort($state, 'keyword not supported');
+}
 
 # UTILITIES
 
