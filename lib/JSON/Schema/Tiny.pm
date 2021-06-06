@@ -16,7 +16,7 @@ use B;
 use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref);
 use Mojo::URL;
 use Mojo::JSON::Pointer;
-use Carp 'croak';
+use Carp qw(croak carp);
 use Storable 'dclone';
 use JSON::MaybeXS 1.004001 'is_bool';
 use Feature::Compat::Try;
@@ -88,6 +88,12 @@ sub evaluate {
 
 ######## NO PUBLIC INTERFACES FOLLOW THIS POINT ########
 
+# keyword => undef, or arrayref of alternatives
+my %removed_keywords = (
+  definitions => [ '$defs' ],
+  dependencies => [ qw(dependentSchemas dependentRequired) ],
+);
+
 sub _eval {
   croak '_eval called in void context' if not defined wantarray;
   croak 'insufficient arguments' if @_ < 3;
@@ -155,6 +161,20 @@ sub _eval {
   ) {
     next if not exists $schema->{$keyword};
     abort({ %$state, keyword => $keyword }, 'keyword not supported');
+  }
+
+  # check for previously-supported but now removed keywords
+  foreach my $keyword (keys %removed_keywords) {
+    next if not exists $schema->{$keyword};
+    my $message ='no-longer-supported "'.$keyword.'" keyword present (at location "'
+      .canonical_schema_uri($state).'")';
+    if ($removed_keywords{$keyword}) {
+      my @list = map '"'.$_.'"', @{$removed_keywords{$keyword}};
+      @list = ((map $_.',', @list[0..$#list-1]), $list[-1]) if @list > 2;
+      splice(@list, -1, 0, 'or') if @list > 1;
+      $message .= ': this should be rewritten as '.join(' ', @list);
+    }
+    carp $message;
   }
 
   return $valid;
