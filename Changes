@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Tiny
 
-{{$NEXT}}
+0.006     2021-06-06 18:20:19Z
           - properly update initial_schema_uri in the state object while passing
             through $id keywords, to keep error locations accurate
 
