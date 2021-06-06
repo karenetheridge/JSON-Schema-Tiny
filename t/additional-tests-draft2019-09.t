@@ -18,7 +18,7 @@ my $version = 'draft2019-09';
 acceptance_tests(
   acceptance => {
     include_optional => 0,
-    test_dir =>'t/additional-tests-'.$version,
+    test_dir => 't/additional-tests-'.$version,
   },
   output_file => $version.'-additional-tests.txt',
   test => {
