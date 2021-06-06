@@ -60,7 +60,7 @@ sub evaluate {
     errors => [],
     seen => {},
     short_circuit => $BOOLEAN_RESULT || $SHORT_CIRCUIT,
-    root_schema => $schema,
+    root_schema => $schema,                 # so we can do $refs within the same document
   };
 
   my $valid;
@@ -124,7 +124,7 @@ sub _eval {
 
   foreach my $keyword (
     # CORE KEYWORDS
-    qw($schema $ref $id $anchor $recursiveAnchor $vocabulary $comment $defs),
+    qw($id $schema $ref $anchor $recursiveAnchor $vocabulary $comment $defs),
     # APPLICATOR KEYWORDS
     qw(allOf anyOf oneOf not if dependentSchemas
       items additionalItems contains
@@ -199,13 +199,15 @@ sub _eval_keyword_ref {
 
   return if not assert_keyword_type($state, $schema, 'string');
 
+  my $uri = Mojo::URL->new($schema->{'$ref'})->to_abs($state->{initial_schema_uri});
+  abort($state, '$refs to anchors are not supported')
+    if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
+
+  # the base of the $ref uri must be the same as the base of the root schema
   abort($state, 'only same-document JSON pointers are supported in $ref')
-    if $schema->{'$ref'} !~ m{^#(/(?:[^~]|~[01])*|)$};
+    if $uri->clone->fragment(undef) ne Mojo::URL->new($state->{root_schema}{'$id'}//'');
 
-  my $uri = Mojo::URL->new($schema->{'$ref'});
-  my $fragment = $uri->fragment;
-
-  my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($fragment);
+  my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
   abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
 
   return _eval($data, $subschema,
