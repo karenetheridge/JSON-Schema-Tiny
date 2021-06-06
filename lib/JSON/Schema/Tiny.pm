@@ -54,9 +54,9 @@ sub evaluate {
   my $state = {
     depth => 0,
     data_path => '',
-    traversed_schema_path => '',            # the accumulated path up to the last $ref traversal
-    canonical_schema_uri => Mojo::URL->new, # the canonical path of the last traversed $ref
-    schema_path => '',                      # the rest of the path, since the last traversed $ref
+    traversed_schema_path => '',          # the accumulated traversal path up to the last $ref traversal
+    initial_schema_uri => Mojo::URL->new, # the canonical URI as of the start or the last traversed $ref
+    schema_path => '',                    # the rest of the path, since the start or the last traversed $ref
     errors => [],
     seen => {},
     short_circuit => $BOOLEAN_RESULT || $SHORT_CIRCUIT,
@@ -191,7 +191,7 @@ sub _eval_keyword_ref {
   return _eval($data, $subschema,
     +{ %$state,
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$ref',
-      canonical_schema_uri => $uri,
+      initial_schema_uri => $uri,
       schema_path => '',
     });
 }
@@ -984,7 +984,7 @@ sub jsonp {
 sub canonical_schema_uri {
   my ($state, @extra_path) = @_;
 
-  my $uri = $state->{canonical_schema_uri}->clone;
+  my $uri = $state->{initial_schema_uri}->clone;
   $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, @extra_path));
   $uri->fragment(undef) if not length($uri->fragment);
   $uri;
