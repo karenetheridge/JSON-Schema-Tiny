@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - add incomplete prereq declaration for Mojo::URL
 
 0.006     2021-06-06 18:20:19Z
           - properly update initial_schema_uri in the state object while passing
