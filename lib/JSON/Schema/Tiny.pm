@@ -65,7 +65,7 @@ sub evaluate {
 
   my $valid;
   try {
-    $valid = _eval($data, $schema, $state)
+    $valid = _eval_subschema($data, $schema, $state)
   }
   catch ($e) {
     if (is_plain_hashref($e)) {
@@ -94,8 +94,8 @@ my %removed_keywords = (
   dependencies => [ qw(dependentSchemas dependentRequired) ],
 );
 
-sub _eval {
-  croak '_eval called in void context' if not defined wantarray;
+sub _eval_subschema {
+  croak '_eval_subschema called in void context' if not defined wantarray;
   croak 'insufficient arguments' if @_ < 3;
   my ($data, $schema, $state) = @_;
 
@@ -203,7 +203,7 @@ sub _eval_keyword_ref {
   my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
   abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
 
-  return _eval($data, $subschema,
+  return _eval_subschema($data, $subschema,
     +{ %$state,
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$ref',
       initial_schema_uri => $uri,
@@ -237,7 +237,7 @@ sub _eval_keyword_recursiveRef {
     abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
   }
 
-  return _eval($data, $subschema,
+  return _eval_subschema($data, $subschema,
     +{ %$state,
       traversed_schema_path => $state->{traversed_schema_path}.$state->{schema_path}.'/$recursiveRef',
       initial_schema_uri => $uri,
@@ -588,7 +588,7 @@ sub _eval_keyword_allOf {
 
   my @invalid;
   foreach my $idx (0 .. $#{$schema->{allOf}}) {
-    next if _eval($data, $schema->{allOf}[$idx],
+    next if _eval_subschema($data, $schema->{allOf}[$idx],
       +{ %$state, schema_path => $state->{schema_path}.'/allOf/'.$idx });
 
     push @invalid, $idx;
@@ -609,7 +609,7 @@ sub _eval_keyword_anyOf {
   my $valid = 0;
   my @errors;
   foreach my $idx (0 .. $#{$schema->{anyOf}}) {
-    next if not _eval($data, $schema->{anyOf}[$idx],
+    next if not _eval_subschema($data, $schema->{anyOf}[$idx],
       +{ %$state, errors => \@errors, schema_path => $state->{schema_path}.'/anyOf/'.$idx });
     ++$valid;
     last if $state->{short_circuit};
@@ -627,7 +627,7 @@ sub _eval_keyword_oneOf {
 
   my (@valid, @errors);
   foreach my $idx (0 .. $#{$schema->{oneOf}}) {
-    next if not _eval($data, $schema->{oneOf}[$idx],
+    next if not _eval_subschema($data, $schema->{oneOf}[$idx],
       +{ %$state, errors => \@errors, schema_path => $state->{schema_path}.'/oneOf/'.$idx });
     push @valid, $idx;
     last if @valid > 1 and $state->{short_circuit};
@@ -647,7 +647,7 @@ sub _eval_keyword_oneOf {
 sub _eval_keyword_not {
   my ($data, $schema, $state) = @_;
 
-  return 1 if not _eval($data, $schema->{not},
+  return 1 if not _eval_subschema($data, $schema->{not},
     +{ %$state, schema_path => $state->{schema_path}.'/not', short_circuit => 1, errors => [] });
 
   return E($state, 'subschema is valid');
@@ -657,12 +657,12 @@ sub _eval_keyword_if {
   my ($data, $schema, $state) = @_;
 
   return 1 if not exists $schema->{then} and not exists $schema->{else};
-  my $keyword = _eval($data, $schema->{if},
+  my $keyword = _eval_subschema($data, $schema->{if},
       +{ %$state, schema_path => $state->{schema_path}.'/if', short_circuit => 1, errors => [] })
     ? 'then' : 'else';
 
   return 1 if not exists $schema->{$keyword};
-  return 1 if _eval($data, $schema->{$keyword},
+  return 1 if _eval_subschema($data, $schema->{$keyword},
     +{ %$state, schema_path => $state->{schema_path}.'/'.$keyword });
   return E({ %$state, keyword => $keyword }, 'subschema is not valid');
 }
@@ -677,7 +677,7 @@ sub _eval_keyword_dependentSchemas {
   my $valid = 1;
   foreach my $property (sort keys %{$schema->{dependentSchemas}}) {
     next if not exists $data->{$property}
-      or _eval($data, $schema->{dependentSchemas}{$property},
+      or _eval_subschema($data, $schema->{dependentSchemas}{$property},
         +{ %$state, schema_path => jsonp($state->{schema_path}, 'dependentSchemas', $property) });
 
     $valid = 0;
@@ -723,7 +723,7 @@ sub _eval_keyword__items_array_schemas {
         _schema_path_suffix => $idx }, 'item not permitted');
     }
     else {
-      next if _eval($data->[$idx], $schema->{$state->{keyword}}[$idx],
+      next if _eval_subschema($data->[$idx], $schema->{$state->{keyword}}[$idx],
         +{ %$state, data_path => $state->{data_path}.'/'.$idx,
           schema_path => $state->{schema_path}.'/'.$state->{keyword}.'/'.$idx });
     }
@@ -752,7 +752,7 @@ sub _eval_keyword__items_schema {
         '%sitem not permitted', $state->{keyword} eq 'additionalItems' ? 'additional ' : '');
     }
     else {
-      next if _eval($data->[$idx], $schema->{$state->{keyword}},
+      next if _eval_subschema($data->[$idx], $schema->{$state->{keyword}},
         +{ %$state, data_path => $state->{data_path}.'/'.$idx,
           schema_path => $state->{schema_path}.'/'.$state->{keyword} });
       $valid = 0;
@@ -776,7 +776,7 @@ sub _eval_keyword_contains {
   $state->{_num_contains} = 0;
   my @errors;
   foreach my $idx (0 .. $#{$data}) {
-    if (_eval($data->[$idx], $schema->{contains},
+    if (_eval_subschema($data->[$idx], $schema->{contains},
         +{ %$state, errors => \@errors,
           data_path => $state->{data_path}.'/'.$idx,
           schema_path => $state->{schema_path}.'/contains' })) {
@@ -813,7 +813,7 @@ sub _eval_keyword_properties {
         _schema_path_suffix => $property }, 'property not permitted');
     }
     else {
-      next if _eval($data->{$property}, $schema->{properties}{$property},
+      next if _eval_subschema($data->{$property}, $schema->{properties}{$property},
         +{ %$state,
           data_path => jsonp($state->{data_path}, $property),
           schema_path => jsonp($state->{schema_path}, 'properties', $property) });
@@ -847,7 +847,7 @@ sub _eval_keyword_patternProperties {
           _schema_path_suffix => $property_pattern }, 'property not permitted');
       }
       else {
-        next if _eval($data->{$property}, $schema->{patternProperties}{$property_pattern},
+        next if _eval_subschema($data->{$property}, $schema->{patternProperties}{$property_pattern},
           +{ %$state,
             data_path => jsonp($state->{data_path}, $property),
             schema_path => jsonp($state->{schema_path}, 'patternProperties', $property_pattern) });
@@ -880,7 +880,7 @@ sub _eval_keyword_additionalProperties {
         'additional property not permitted');
     }
     else {
-      next if _eval($data->{$property}, $schema->{additionalProperties},
+      next if _eval_subschema($data->{$property}, $schema->{additionalProperties},
         +{ %$state,
           data_path => jsonp($state->{data_path}, $property),
           schema_path => $state->{schema_path}.'/additionalProperties' });
@@ -901,7 +901,7 @@ sub _eval_keyword_propertyNames {
 
   my $valid = 1;
   foreach my $property (sort keys %$data) {
-    next if _eval($property, $schema->{propertyNames},
+    next if _eval_subschema($property, $schema->{propertyNames},
       +{ %$state,
         data_path => jsonp($state->{data_path}, $property),
         schema_path => $state->{schema_path}.'/propertyNames' });
