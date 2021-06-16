@@ -18,7 +18,7 @@ foreach my $keyword (
     qw(unevaluatedItems unevaluatedProperties),
 ) {
   cmp_deeply(
-    evaluate(true, { $keyword => 1 }),
+    evaluate(true, { $keyword => {} }),
     {
       valid => false,
       errors => [
