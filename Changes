@@ -2,6 +2,8 @@ Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
           - add incomplete prereq declaration for Mojo::URL
+          - skip acceptance test for integer overflow when nvsize is too
+            large to produce the expected error
 
 0.006     2021-06-06 18:20:19Z
           - properly update initial_schema_uri in the state object while passing
