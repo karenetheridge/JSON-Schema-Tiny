@@ -938,12 +938,12 @@ sub _eval_keyword_propertyNames {
 
 sub _eval_keyword_unevaluatedItems {
   my ($data, $schema, $state) = @_;
-  abort($state, 'keyword not supported');
+  abort($state, 'keyword not yet supported');
 }
 
 sub _eval_keyword_unevaluatedProperties {
   my ($data, $schema, $state) = @_;
-  abort($state, 'keyword not supported');
+  abort($state, 'keyword not yet supported');
 }
 
 # UTILITIES

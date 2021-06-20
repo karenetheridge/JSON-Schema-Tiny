@@ -25,7 +25,7 @@ foreach my $keyword (
         {
           instanceLocation => '',
           keywordLocation => '/'.$keyword,
-          error => 'keyword not supported',
+          error => 'keyword not yet supported',
         },
       ],
     },
