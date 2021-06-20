@@ -297,7 +297,7 @@ sub _eval_keyword_recursiveAnchor {
   my ($data, $schema, $state) = @_;
 
   return if not assert_keyword_type($state, $schema, 'boolean');
-  return 1 if not $schema->{'$recursiveAnchor'};
+  return 1 if not $schema->{'$recursiveAnchor'} or exists $state->{recursive_anchor_uri};
 
   # this is required because the location is used as the base URI for future resolution
   # of $recursiveRef, and the fragment would be disregarded in the base
