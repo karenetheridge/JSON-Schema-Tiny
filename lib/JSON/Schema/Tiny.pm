@@ -238,8 +238,7 @@ sub _eval_keyword_recursiveRef {
 
   return if not assert_keyword_type($state, $schema, 'string');
 
-  my $uri = Mojo::URL->new($schema->{'$recursiveRef'})->to_abs($state->{canonical_schema_uri});
-
+  my $uri = Mojo::URL->new($schema->{'$recursiveRef'})->to_abs($state->{initial_schema_uri});
   abort($state, '$refs to anchors are not supported')
     if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
 
