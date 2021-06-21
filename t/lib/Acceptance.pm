@@ -11,7 +11,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use Test::More;
 use Path::Tiny;
 
-use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning';
+use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning'; # hooks into done_testing unless overridden
 use Test::JSON::Schema::Acceptance 1.007;
 use JSON::Schema::Tiny;
 
