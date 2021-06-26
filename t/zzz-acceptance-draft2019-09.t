@@ -31,7 +31,7 @@ acceptance_tests(
   evaluator => {
     specification_version => $version,
   },
-  output_file => $version.'.txt',
+  output_file => $version.'-acceptance.txt',
   test => {
     $ENV{NO_TODO} ? () : ( todo_tests => [
       # unsupported keywords or subfeatures
