@@ -52,12 +52,12 @@ acceptance_tests(
         ] },
       { file => 'unknownKeyword.json', group_description => '$id inside an unknown keyword is not a real identifier', test_description => 'type matches second anyOf, which has a real schema in it' },
       { file => [
-          'optional/bignum.json',                     # TODO: see JSD2 issue #10
-          'optional/ecmascript-regex.json',           # TODO: see JSD2 issue #27
+          'optional/bignum.json',                     # TODO: see JSM issue #10
+          'optional/ecmascript-regex.json',           # TODO: see JSM issue #27
           'optional/float-overflow.json',             # see slack logs re multipleOf algo
         ] },
       # various edge cases that are difficult to accomodate
-      $Config{ivsize} < 8 || $Config{nvsize} < 8 ?    # see JSD2 issue #10
+      $Config{ivsize} < 8 || $Config{nvsize} < 8 ?    # see JSM issue #10
         { file => 'const.json',
           group_description => 'float and integers are equal up to 64-bit representation limits',
           test_description => 'float is valid' }
