@@ -73,17 +73,4 @@ sub acceptance_tests {
   path('t/results/'.$options{output_file})->spew_utf8($accepter->results_text)
     if -d '.git' or $ENV{AUTHOR_TESTING} or $ENV{RELEASE_TESTING};
 }
-
-END {
-diag <<DIAG
-
-###############################
-
-Attention CPANTesters: you do not need to file a ticket when this test fails. I will receive the test reports and act on it soon. thank you!
-
-###############################
-DIAG
-  if not Test::Builder->new->is_passing;
-}
-
 1;

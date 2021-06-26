@@ -71,7 +71,18 @@ acceptance_tests(
   },
 );
 
+END {
+diag <<DIAG
+
+###############################
+
+Attention CPANTesters: you do not need to file a ticket when this test fails. I will receive the test reports and act on it soon. thank you!
+
+###############################
+DIAG
+  if not Test::Builder->new->is_passing;
+}
+
 done_testing;
 __END__
-
-see t/results/draft2019-09.txt for test results
+see t/results/draft2019-09-acceptance.txt for test results
