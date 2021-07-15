@@ -378,9 +378,7 @@ sub _eval_keyword_enum {
   abort($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
 
   my @s; my $idx = 0;
-  return 1
-    if any { is_equal($data, $_, $s[$idx++] = { $MOJO_BOOLEANS ? (lhs_mojo_bool => 1) : () }) }
-      @{$schema->{enum}};
+  return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } @{$schema->{enum}};
 
   return E($state, 'value does not match'
     .(!(grep $_->{path}, @s) ? ''
@@ -390,7 +388,7 @@ sub _eval_keyword_enum {
 sub _eval_keyword_const {
   my ($data, $schema, $state) = @_;
 
-  return 1 if is_equal($data, $schema->{const}, my $s = { $MOJO_BOOLEANS ? (lhs_mojo_bool => 1) : () });
+  return 1 if is_equal($data, $schema->{const}, my $s = {});
   return E($state, 'value does not match'
     .($s->{path} ? ' (differences start at "'.$s->{path}.'")' : ''));
 }
@@ -1020,8 +1018,10 @@ sub is_equal {
 
   my @types = map get_type($_), $x, $y;
 
-  return 1 if $state->{lhs_mojo_bool}
-    and $types[0] eq 'reference to SCALAR' and $types[1] eq 'boolean' and not ($$x xor $y);
+  if ($MOJO_BOOLEANS) {
+    ($x, $types[0]) = (0+!!$$x, 'boolean') if $types[0] eq 'reference to SCALAR';
+    ($y, $types[1]) = (0+!!$$y, 'boolean') if $types[1] eq 'reference to SCALAR';
+  }
 
   return 0 if $types[0] ne $types[1];
   return 1 if $types[0] eq 'null';
@@ -1273,9 +1273,7 @@ other, or badly-written schemas that could be optimized. Defaults to 50.
 =head2 C<$MOJO_BOOLEANS>
 
 When true, any type that is expected to be a boolean B<in the instance data> may also be expressed as
-scalar references to a number, e.g. C<\0> or C<\1> (which are serialized as booleans by L<Mojo::JSON>).
-(Warning: scalar references and real booleans should not be mixed in data being checked by the
-C<uniqueItems> keyword.)
+the scalar references C<\0> or C<\1> (which are serialized as booleans by L<Mojo::JSON>).
 
 =head2 C<$SPECIFICATION_VERSION>
 

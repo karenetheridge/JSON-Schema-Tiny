@@ -54,7 +54,6 @@ subtest 'strict booleans (default)' => sub {
     'true',
     \0,
     \1,
-    \2,
   );
 
   cmp_deeply(
@@ -118,7 +117,6 @@ subtest 'strict booleans (default)' => sub {
     'true',
     \0,
     \1,
-    \2,
   );
 };
 
@@ -134,7 +132,6 @@ subtest '$MOJO_BOOLEANS = 1' => sub {
     true,
     \0,
     \1,
-    \2,
   );
 
   cmp_deeply(
@@ -164,12 +161,32 @@ subtest '$MOJO_BOOLEANS = 1' => sub {
         'true',
         \0,
         \1,
-        \2,
       ],
       { uniqueItems => true },
     ),
     { valid => true },
-    'items are still all considered unique even though some are treated identically',
+    'items are all considered unique when types differ, even when perl treats them similarly',
+  );
+
+  cmp_deeply(
+    evaluate($_, { uniqueItems => true }),
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '/uniqueItems',
+          error => 'items at indices 0 and 1 are not unique',
+        },
+      ],
+    },
+    'scalarrefs compare as identical to their counterpart booleans',
+  )
+  foreach (
+    [ \0, false ],
+    [ false, \0 ],
+    [ \1, true ],
+    [ true, \1 ],
   );
 };
 
