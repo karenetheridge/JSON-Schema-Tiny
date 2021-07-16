@@ -31,7 +31,8 @@ our @EXPORT_OK = qw(evaluate);
 our $BOOLEAN_RESULT = 0;
 our $SHORT_CIRCUIT = 0;
 our $MAX_TRAVERSAL_DEPTH = 50;
-our $MOJO_BOOLEANS = 0;
+our $MOJO_BOOLEANS; # deprecated; renamed to $SCALARREF_BOOLEANS
+our $SCALARREF_BOOLEANS;
 our $SPECIFICATION_VERSION;
 
 my %version_uris = (
@@ -46,10 +47,11 @@ sub new {
 sub evaluate {
   croak 'evaluate called in void context' if not defined wantarray;
 
+  $SCALARREF_BOOLEANS = $SCALARREF_BOOLEANS // $MOJO_BOOLEANS;
   local $BOOLEAN_RESULT = $_[0]->{boolean_result} // $BOOLEAN_RESULT,
   local $SHORT_CIRCUIT = $_[0]->{short_circuit} // $SHORT_CIRCUIT,
   local $MAX_TRAVERSAL_DEPTH = $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH,
-  local $MOJO_BOOLEANS = $_[0]->{mojo_booleans} // $MOJO_BOOLEANS,
+  local $SCALARREF_BOOLEANS = $_[0]->{scalarref_booleans} // $SCALARREF_BOOLEANS // $_[0]->{mojo_booleans},
   local $SPECIFICATION_VERSION = $_[0]->{specification_version} // $SPECIFICATION_VERSION,
   shift
     if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
@@ -356,7 +358,7 @@ sub _eval_keyword_type {
 
     foreach my $type (@{$schema->{type}}) {
       return 1 if is_type($type, $data)
-        or ($type eq 'boolean' and $MOJO_BOOLEANS and is_type('reference to SCALAR', $data));
+        or ($type eq 'boolean' and $SCALARREF_BOOLEANS and is_type('reference to SCALAR', $data));
     }
     return E($state, 'wrong type (expected one of %s)', join(', ', @{$schema->{type}}));
   }
@@ -366,7 +368,7 @@ sub _eval_keyword_type {
       if not any { ($schema->{type}//'') eq $_ } qw(null boolean object array string number integer);
 
     return 1 if is_type($schema->{type}, $data)
-      or ($schema->{type} eq 'boolean' and $MOJO_BOOLEANS and is_type('reference to SCALAR', $data));
+      or ($schema->{type} eq 'boolean' and $SCALARREF_BOOLEANS and is_type('reference to SCALAR', $data));
     return E($state, 'wrong type (expected %s)', $schema->{type});
   }
 }
@@ -1018,7 +1020,7 @@ sub is_equal {
 
   my @types = map get_type($_), $x, $y;
 
-  if ($MOJO_BOOLEANS) {
+  if ($SCALARREF_BOOLEANS) {
     ($x, $types[0]) = (0+!!$$x, 'boolean') if $types[0] eq 'reference to SCALAR';
     ($y, $types[1]) = (0+!!$$y, 'boolean') if $types[1] eq 'reference to SCALAR';
   }
@@ -1270,10 +1272,10 @@ The maximum number of levels deep a schema traversal may go, before evaluation i
 protect against accidental infinite recursion, such as from two subschemas that each reference each
 other, or badly-written schemas that could be optimized. Defaults to 50.
 
-=head2 C<$MOJO_BOOLEANS>
+=head2 C<$SCALARREF_BOOLEANS>
 
 When true, any type that is expected to be a boolean B<in the instance data> may also be expressed as
-the scalar references C<\0> or C<\1> (which are serialized as booleans by L<Mojo::JSON>).
+the scalar references C<\0> or C<\1> (which are serialized as booleans by JSON backends).
 
 =head2 C<$SPECIFICATION_VERSION>
 

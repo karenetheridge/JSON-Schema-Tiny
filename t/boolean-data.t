@@ -120,8 +120,8 @@ subtest 'strict booleans (default)' => sub {
   );
 };
 
-subtest '$MOJO_BOOLEANS = 1' => sub {
-  local $JSON::Schema::Tiny::MOJO_BOOLEANS = 1;
+subtest '$SCALARREF_BOOLEANS = 1' => sub {
+  local $JSON::Schema::Tiny::SCALARREF_BOOLEANS = 1;
   cmp_deeply(
     evaluate($_, $test_schema),
     { valid => true },
