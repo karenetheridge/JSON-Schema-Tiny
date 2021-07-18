@@ -35,7 +35,7 @@ sub acceptance_tests {
   );
 
   my $js = JSON::Schema::Tiny->new(%{$options{evaluator}});
-  my $js_short_circuit = JSON::Schema::Tiny->new(%{$options{evaluator}}, short_circuit => 1);
+  my $js_short_circuit = $ENV{NO_SHORT_CIRCUIT} || JSON::Schema::Tiny->new(%{$options{evaluator}}, short_circuit => 1);
 
   my $encoder = JSON::MaybeXS->new(allow_nonref => 1, utf8 => 0, convert_blessed => 1, canonical => 1, pretty => 1);
   $encoder->indent_length(2) if $encoder->can('indent_length');
