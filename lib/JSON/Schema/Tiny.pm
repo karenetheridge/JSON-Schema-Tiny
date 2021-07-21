@@ -1276,6 +1276,7 @@ other, or badly-written schemas that could be optimized. Defaults to 50.
 
 When true, any type that is expected to be a boolean B<in the instance data> may also be expressed as
 the scalar references C<\0> or C<\1> (which are serialized as booleans by JSON backends).
+Defaults to false.
 
 =head2 C<$SPECIFICATION_VERSION>
 
