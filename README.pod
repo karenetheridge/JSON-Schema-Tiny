@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.006
+version 0.007
 
 =head1 SYNOPSIS
 
@@ -32,8 +32,8 @@ version 0.006
 =head1 DESCRIPTION
 
 This module aims to be a slimmed-down L<JSON Schema|https://json-schema.org/> evaluator and
-validator, supporting the most popular keywords used in the draft 2019-09 version of the
-specification. (See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
+validator, supporting the most popular keywords.
+(See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
 
 =head1 FUNCTIONS
 
@@ -50,8 +50,8 @@ Evaluates the provided instance data against the known schema document.
 The data is in the form of an unblessed nested Perl data structure representing any type that JSON
 allows: null, boolean, string, number, object, array. (See L</TYPES> below.)
 
-The schema must represent a JSON Schema that respects the Draft 2019-09 meta-schema at
-L<https://json-schema.org/draft/2019-09/schema>, in the form of a Perl data structure, such as what is returned from a JSON decode operation.
+The schema must represent a valid JSON Schema in the form of a Perl data structure, such as what is
+returned from a JSON decode operation.
 
 With default configuration settings, the return value is a hashref indicating the validation success
 or failure, plus (when validation failed), an arrayref of error strings in standard JSON Schema
@@ -108,14 +108,30 @@ The maximum number of levels deep a schema traversal may go, before evaluation i
 protect against accidental infinite recursion, such as from two subschemas that each reference each
 other, or badly-written schemas that could be optimized. Defaults to 50.
 
-=head2 C<$MOJO_BOOLEANS>
+=head2 C<$SCALARREF_BOOLEANS>
 
 When true, any type that is expected to be a boolean B<in the instance data> may also be expressed as
-scalar references to a number, e.g. C<\0> or C<\1> (which are serialized as booleans by L<Mojo::JSON>).
-(Warning: scalar references and real booleans should not be mixed in data being checked by the
-C<uniqueItems> keyword.)
-
+the scalar references C<\0> or C<\1> (which are serialized as booleans by JSON backends).
 Defaults to false.
+
+=head2 C<$SPECIFICATION_VERSION>
+
+When set, the version of the draft specification is locked to one particular value, and use of
+keywords inconsistent with that specification version will result in an error. Will be set
+internally automatically with the use of the C<$schema> keyword. When not set, all keywords will be
+honoured (when otherwise supported).
+
+Supported values for this option, and the corresponding values for the C<$schema> keyword, are:
+
+=over 4
+
+=item *
+
+L<C<draft2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>, corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>.
+
+=back
+
+Defaults to undef.
 
 =head1 UNSUPPORTED JSON-SCHEMA FEATURES
 
@@ -146,7 +162,7 @@ will result in an error):
 
 =item *
 
-C<$schema> - only accepted if set to the draft201909 metaschema URI ("C<https://json-schema.org/draft/2019-09/schema>")
+C<$schema> - only accepted if set to one of the specification metaschema URIs (see L<$SPECIFICATION_VERSION> for supported values)
 
 =item *
 
