@@ -213,6 +213,7 @@ sub _eval_keyword_ref {
   my ($data, $schema, $state) = @_;
 
   assert_keyword_type($state, $schema, 'string');
+  assert_uri_reference($state, $schema);
 
   my $uri = Mojo::URL->new($schema->{'$ref'})->to_abs($state->{initial_schema_uri});
   abort($state, '$refs to anchors are not supported')
@@ -239,6 +240,7 @@ sub _eval_keyword_recursiveRef {
   my ($data, $schema, $state) = @_;
 
   assert_keyword_type($state, $schema, 'string');
+  assert_uri_reference($state, $schema);
 
   my $uri = Mojo::URL->new($schema->{'$recursiveRef'})->to_abs($state->{initial_schema_uri});
   abort($state, '$recursiveRefs to anchors are not supported')
@@ -272,6 +274,7 @@ sub _eval_keyword_id {
   my ($data, $schema, $state) = @_;
 
   assert_keyword_type($state, $schema, 'string');
+  assert_uri_reference($state, $schema);
 
   my $uri = Mojo::URL->new($schema->{'$id'});
   abort($state, '$id value "%s" cannot have a non-empty fragment', $uri) if length $uri->fragment;
@@ -1133,6 +1136,23 @@ sub assert_pattern {
   return 1;
 }
 
+sub assert_uri_reference {
+  my ($state, $schema) = @_;
+
+  my $ref = $schema->{$state->{keyword}};
+
+  abort($state, '%s value is not a valid URI reference', $state->{keyword})
+    # see also uri-reference format sub
+    if fc(Mojo::URL->new($ref)->to_unsafe_string) ne fc($ref)
+      or $ref =~ /[^[:ascii:]]/
+      or $ref =~ /#/
+        and $ref !~ m{#$}                          # empty fragment
+        and $ref !~ m{#[A-Za-z][A-Za-z0-9_:.-]*$}  # plain-name fragment
+        and $ref !~ m{#/(?:[^~]|~[01])*$};         # json pointer fragment
+
+  return 1;
+}
+
 sub assert_uri {
   my ($state, $schema, $override) = @_;
 
@@ -1204,7 +1224,7 @@ validator, supporting the most popular keywords.
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
-new
+new assert_uri_reference
 
 =head2 evaluate
 
