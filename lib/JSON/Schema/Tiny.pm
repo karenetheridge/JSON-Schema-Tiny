@@ -241,10 +241,10 @@ sub _eval_keyword_recursiveRef {
   return if not assert_keyword_type($state, $schema, 'string');
 
   my $uri = Mojo::URL->new($schema->{'$recursiveRef'})->to_abs($state->{initial_schema_uri});
-  abort($state, '$refs to anchors are not supported')
+  abort($state, '$recursiveRefs to anchors are not supported')
     if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
 
-  # the base of the $ref uri must be the same as the base of the root schema.
+  # the base of the $recursiveRef uri must be the same as the base of the root schema.
   # unfortunately this means that nearly all usecases of $recursiveRef won't work, because we don't
   # track the locations of $ids in this or other documents.
   abort($state, 'only same-document, same-base JSON pointers are supported in $recursiveRef')
