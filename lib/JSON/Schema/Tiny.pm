@@ -985,11 +985,11 @@ sub is_type {
     }
   }
 
-  if ($type eq 'reference to SCALAR') {
-    return ref($value) eq 'SCALAR';
+  if ($type =~ /^reference to (.+)$/) {
+    return !blessed($value) && ref($value) eq $1;
   }
 
-  croak sprintf('unknown type "%s"', $type);
+  return ref($value) eq $type;
 }
 
 # only the core six types are reported (integers are numbers)
@@ -1002,10 +1002,7 @@ sub get_type {
   return 'array' if is_plain_arrayref($value);
   return 'boolean' if is_bool($value);
 
-  if (my $ref = ref($value)) {
-    return 'reference to SCALAR' if $ref eq 'SCALAR';
-    croak sprintf('unsupported reference type %s', $ref);
-  }
+  return (blessed($value) ? '' : 'reference to ').ref($value) if is_ref($value);
 
   my $flags = B::svref_2object(\$value)->FLAGS;
   return 'string' if $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
