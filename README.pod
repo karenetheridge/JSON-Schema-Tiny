@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.007
+version 0.008
 
 =head1 SYNOPSIS
 
@@ -39,7 +39,7 @@ validator, supporting the most popular keywords.
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
-new
+new assert_uri_reference
 
 =head2 evaluate
 
@@ -127,7 +127,15 @@ Supported values for this option, and the corresponding values for the C<$schema
 
 =item *
 
+L<C<draft2020-12>|https://json-schema.org/specification-links.html#2020-12>, corresponding to metaschema C<https://json-schema.org/draft/2020-12/schema>
+
+=item *
+
 L<C<draft2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>, corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>.
+
+=item *
+
+L<C<draft7>|https://json-schema.org/specification-links.html#draft-7>, corresponding to metaschema C<http://json-schema.org/draft-07/schema#>
 
 =back
 
