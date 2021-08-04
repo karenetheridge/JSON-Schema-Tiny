@@ -21,7 +21,7 @@ BEGIN {
     if not -d '.git' and not grep $ENV{$_}, @variables;
 }
 
-my $version = 'draft2020-12';
+my $version = 'draft7';
 
 acceptance_tests(
   acceptance => {
@@ -36,28 +36,28 @@ acceptance_tests(
     $ENV{NO_TODO} ? () : ( todo_tests => [
       # unsupported keywords or subfeatures
       { file => [ qw(
-          anchor.json
           id.json
-          dynamicRef.json
           refRemote.json
-          unevaluatedItems.json
-          unevaluatedProperties.json
+          optional/content.json
         ) ] },
-      { file => 'defs.json', group_description => [ 'valid definition', 'validate definition against metaschema' ] },
+      { file => 'definitions.json', group_description => [ 'valid definition', 'validate definition against metaschema' ] },
       { file => 'ref.json', group_description => [
+          '$ref prevents a sibling $id from changing the base uri',
           'remote ref, containing refs itself',
           'Recursive references between schemas',
+          'Location-independent identifier',
+          'Location-independent identifier with base URI change in subschema',
           'refs with relative uris and defs',
           'relative refs with absolute uris and defs',
         ] },
       { file => 'unknownKeyword.json', group_description => '$id inside an unknown keyword is not a real identifier', test_description => 'type matches second anyOf, which has a real schema in it' },
       { file => [
-          'optional/bignum.json',                     # TODO: see JSD2 issue #10
-          'optional/ecmascript-regex.json',           # TODO: see JSD2 issue #27
+          'optional/bignum.json',                     # TODO: see JSM issue #10
+          'optional/ecmascript-regex.json',           # TODO: see JSM issue #27
           'optional/float-overflow.json',             # see slack logs re multipleOf algo
         ] },
       # various edge cases that are difficult to accomodate
-      $Config{ivsize} < 8 || $Config{nvsize} < 8 ?    # see JSD2 issue #10
+      $Config{ivsize} < 8 || $Config{nvsize} < 8 ?    # see JSM issue #10
         { file => 'const.json',
           group_description => 'float and integers are equal up to 64-bit representation limits',
           test_description => 'float is valid' }
@@ -85,5 +85,4 @@ DIAG
 
 done_testing;
 __END__
-
-see t/results/draft2020-12.txt for test results
+see t/results/draft7-acceptance.txt for test results
