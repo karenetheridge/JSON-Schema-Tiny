@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.008
+version 0.009
 
 =head1 SYNOPSIS
 
@@ -143,7 +143,7 @@ Defaults to undef.
 
 =head1 UNSUPPORTED JSON-SCHEMA FEATURES
 
-Unlike L<JSON::Schema::Draft201909>, this is not a complete implementation of the JSON Schema
+Unlike L<JSON::Schema::Modern>, this is not a complete implementation of the JSON Schema
 specification. Some features and keywords are left unsupported in order to keep the code small and
 the execution fast. These features are not available:
 
@@ -164,7 +164,7 @@ use of C<$ref> other than to locations in the local schema in json-pointer forma
 =back
 
 In addition, these keywords are implemented only partially or not at all (their presence in a schema
-will result in an error):
+will be ignored or possibly result in an error):
 
 =over 4
 
@@ -182,7 +182,7 @@ C<$anchor>
 
 =item *
 
-C<$recursiveAnchor> and C<$recursiveRef>
+C<$recursiveAnchor> and C<$recursiveRef> (draft2019-09), and C<$dynamicAnchor> and C<$dynamicRef> (draft2020-12 and thereafter)
 
 =item *
 
@@ -199,7 +199,7 @@ C<format> (does not cause an error when used)
 =back
 
 For a more full-featured implementation of the JSON Schema specification, see
-L<JSON::Schema::Draft201909>.
+L<JSON::Schema::Modern>.
 
 =head1 LIMITATIONS
 
@@ -228,7 +228,7 @@ SOURCES.>
 
 =item *
 
-L<JSON::Schema::Draft201909>: a more specification-compliant JSON Schema evaluator
+L<JSON::Schema::Modern>: a more specification-compliant JSON Schema evaluator
 
 =item *
 
