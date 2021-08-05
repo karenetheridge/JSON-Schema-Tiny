@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.009     2021-08-05 03:51:04Z
           - skip acceptance test for integer overflow when nvsize is too
             large to produce the expected error
