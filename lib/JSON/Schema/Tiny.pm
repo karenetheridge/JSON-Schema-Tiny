@@ -1488,14 +1488,14 @@ the execution fast. These features are not available:
   locally or on the network, are not permitted.
 
 In addition, these keywords are implemented only partially or not at all (their presence in a schema
-will result in an error):
+will be ignored or possibly result in an error):
 
 =for :list
 * C<$schema> - only accepted if set to one of the specification metaschema URIs (see
   L<$SPECIFICATION_VERSION> for supported values)
 * C<$id>
 * C<$anchor>
-* C<$recursiveAnchor> and C<$recursiveRef>
+* C<$recursiveAnchor> and C<$recursiveRef> (draft2019-09), and C<$dynamicAnchor> and C<$dynamicRef> (draft2020-12 and thereafter)
 * C<$vocabulary>
 * C<unevaluatedItems> and C<unevaluatedProperties> (which require annotation support)
 * C<format> (does not cause an error when used)
