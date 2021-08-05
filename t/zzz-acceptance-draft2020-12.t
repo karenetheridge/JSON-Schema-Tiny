@@ -85,5 +85,4 @@ DIAG
 
 done_testing;
 __END__
-
-see t/results/draft2020-12.txt for test results
+see t/results/draft2020-12-acceptance.txt for test results
