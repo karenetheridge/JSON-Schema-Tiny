@@ -1474,7 +1474,7 @@ Defaults to undef.
 
 =head1 UNSUPPORTED JSON-SCHEMA FEATURES
 
-Unlike L<JSON::Schema::Draft201909>, this is not a complete implementation of the JSON Schema
+Unlike L<JSON::Schema::Modern>, this is not a complete implementation of the JSON Schema
 specification. Some features and keywords are left unsupported in order to keep the code small and
 the execution fast. These features are not available:
 
@@ -1501,7 +1501,7 @@ will result in an error):
 * C<format> (does not cause an error when used)
 
 For a more full-featured implementation of the JSON Schema specification, see
-L<JSON::Schema::Draft201909>.
+L<JSON::Schema::Modern>.
 
 =head1 LIMITATIONS
 
@@ -1527,7 +1527,7 @@ SOURCES.>
 =head1 SEE ALSO
 
 =for :list
-* L<JSON::Schema::Draft201909>: a more specification-compliant JSON Schema evaluator
+* L<JSON::Schema::Modern>: a more specification-compliant JSON Schema evaluator
 * L<Test::JSON::Schema::Acceptance>: contains the official JSON Schema test suite
 * L<https://json-schema.org>
 * L<Understanding JSON Schema|https://json-schema.org/understanding-json-schema>: tutorial-focused documentation
