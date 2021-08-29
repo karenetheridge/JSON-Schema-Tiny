@@ -389,9 +389,7 @@ sub _eval_keyword_vocabulary {
   assert_keyword_type($state, $schema, 'object');
 
   foreach my $property (sort keys %{$schema->{'$vocabulary'}}) {
-    abort($state, '$vocabulary/%s value is not a boolean', $property)
-      if not is_type('boolean', $schema->{'$vocabulary'}{$property});
-
+    assert_keyword_type({ %$state, _schema_path_suffix => $property }, $schema, 'boolean');
     assert_uri($state, $schema, $property);
   }
 
@@ -1276,7 +1274,12 @@ sub abort {
 # one common usecase of abort()
 sub assert_keyword_type {
   my ($state, $schema, $type) = @_;
-  return 1 if is_type($type, $schema->{$state->{keyword}});
+  my $value = $schema->{$state->{keyword}};
+  $value = is_plain_hashref($value) ? $value->{$state->{_schema_path_suffix}}
+      : is_plain_arrayref($value) ? $value->[$state->{_schema_path_suffix}]
+      : die 'unknown type'
+    if exists $state->{_schema_path_suffix};
+  return 1 if is_type($type, $value);
   abort($state, '%s value is not a%s %s', $state->{keyword}, ($type =~ /^[aeiou]/ ? 'n' : ''), $type);
 }
 
