@@ -13,7 +13,7 @@ no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 
 use B;
-use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref);
+use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref is_arrayref);
 use Mojo::URL;
 use Mojo::JSON::Pointer;
 use Carp qw(croak carp);
@@ -645,11 +645,11 @@ sub _eval_keyword_dependentRequired {
   assert_keyword_type($state, $schema, 'object');
 
   foreach my $property (sort keys %{$schema->{dependentRequired}}) {
-    E({ %$state, _schema_path_suffix => $property }, 'dependentRequired value is not an array'), next
+    E({ %$state, _schema_path_suffix => $property }, 'value is not an array'), next
       if not is_type('array', $schema->{dependentRequired}{$property});
 
     foreach my $index (0..$#{$schema->{dependentRequired}{$property}}) {
-      abort({ %$state, _schema_path_suffix => $property }, 'element #%d is not a string', $index)
+      abort({ %$state, _schema_path_suffix => [ $property, $index ] }, 'element #%d is not a string', $index)
         if not is_type('string', $schema->{dependentRequired}{$property}[$index]);
     }
 
@@ -793,7 +793,7 @@ sub _eval_keyword_dependencies {
       # as in dependentRequired
 
       foreach my $index (0..$#{$schema->{dependencies}{$property}}) {
-        abort({ %$state, _schema_path_suffix => $property }, 'element #%d is not a string', $index)
+        $valid = E({ %$state, _schema_path_suffix => [ $property, $index ] }, 'element #%d is not a string', $index)
           if not is_type('string', $schema->{dependencies}{$property}[$index]);
       }
 
@@ -1226,13 +1226,14 @@ sub is_elements_unique {
 
 # shorthand for creating and appending json pointers
 sub jsonp {
-  return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, grep defined, @_);
+  return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, map +(is_arrayref($_) ? @$_ : $_), grep defined, @_);
 }
 
 # shorthand for finding the canonical uri of the present schema location
 sub canonical_schema_uri {
   my ($state, @extra_path) = @_;
 
+  splice(@extra_path, -1, 1, @{$extra_path[-1]}) if @extra_path and is_arrayref($extra_path[-1]);
   my $uri = $state->{initial_schema_uri}->clone;
   $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, @extra_path));
   $uri->fragment(undef) if not length($uri->fragment);
