@@ -12,7 +12,7 @@ use Test::More;
 use Path::Tiny;
 
 use if $ENV{AUTHOR_TESTING}, 'Test::Warnings' => ':fail_on_warning'; # hooks into done_testing unless overridden
-use Test::JSON::Schema::Acceptance 1.007;
+use Test::JSON::Schema::Acceptance 1.013;
 use JSON::Schema::Tiny;
 
 BEGIN {
