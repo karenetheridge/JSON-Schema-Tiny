@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - update acceptance tests for Test::JSON::Schema::Acceptance 1.013
 
 0.010     2021-09-11 23:09:29Z
           - skip some regex tests when Unicode library is too old for those
