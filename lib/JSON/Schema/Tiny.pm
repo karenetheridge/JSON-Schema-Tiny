@@ -169,7 +169,7 @@ sub _eval_subschema {
     !$spec_version || $spec_version eq 'draft7' ? 'dependencies' : (),
     !$spec_version || $spec_version !~ qr/^draft(7|2019-09)$/ ? 'prefixItems' : (),
     'items',
-    !$spec_version || $spec_version =~ qr/^draft(7|2019-09)$/ ? 'additionalItems' : (),
+    !$spec_version || $spec_version =~ qr/^draft(?:7|2019-09)$/ ? 'additionalItems' : (),
     qw(contains properties patternProperties additionalProperties propertyNames),
     # UNEVALUATED KEYWORDS
     !$spec_version || $spec_version ne 'draft7' ? qw(unevaluatedItems unevaluatedProperties) : (),
