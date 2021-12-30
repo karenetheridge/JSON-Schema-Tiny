@@ -2,6 +2,8 @@ Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
           - minimum perl version raised to 5.020
+          - very large/small numbers are now properly accomodated in all
+            cases, including from JSON-serialized data
 
 0.011     2021-10-22 22:08:02Z
           - update acceptance tests for Test::JSON::Schema::Acceptance 1.013

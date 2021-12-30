@@ -13,6 +13,8 @@ use if $ENV{AUTHOR_TESTING}, 'Test::Warnings';
 use Test::Fatal;
 use Scalar::Util qw(isdual dualvar);
 use JSON::Schema::Tiny ();
+use Math::BigInt;
+use Math::BigFloat;
 use lib 't/lib';
 use Helper;
 
@@ -21,7 +23,8 @@ my %inflated_data = (
   boolean => [ false, true ],
   object => [ {}, { a => 1 } ],
   array => [ [], [ 1 ] ],
-  number => [ 0, -1, 2, 2.0, 3.1 ],
+  number => [ 3.1, 1.23456789012e10, Math::BigFloat->new('0.123') ],
+  integer => [ 0, -1, 2, 2.0, 2**31-1, 2**31, 2**63-1, 2**63, 2**64, 2**65, 1000000000000000, Math::BigInt->new('1e20') ],
   string => [ '', '0', '-1', '2', '2.0', '3.1', 'école', 'ಠ_ಠ' ],
 );
 
@@ -30,7 +33,8 @@ my %json_data = (
   boolean => [ 'false', 'true' ],
   object => [ '{}', '{"a":1}' ],
   array => [ '[]', '[1]' ],
-  number => [ '0', '-1', '2.0', '3.1' ],
+  number => [ '3.1', '1.23456789012e10' ],
+  integer => [ '0', '-1', '2.0', (map $_.'', 2**31-1, 2**31, 2**63-1, 2**63, 2**64, 2**65), '1000000000000000' ],
   string => [ '""', '"0"', '"-1"', '"2.0"', '"3.1"',
     qq{"\x{c3}\x{a9}cole"}, qq{"\x{e0}\x{b2}\x{a0}_\x{e0}\x{b2}\x{a0}"} ],
 );
@@ -40,10 +44,17 @@ foreach my $type (sort keys %inflated_data) {
     foreach my $value ($inflated_data{$type}->@*) {
       my $value_copy = $value;
       ok(JSON::Schema::Tiny::is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
-      is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
+      ok(JSON::Schema::Tiny::is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
+        if $type eq 'integer';
+
+      {
+        my $type = $type eq 'integer' ? 'number' : $type;
+        is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
+      }
 
       foreach my $other_type (sort keys %inflated_data) {
         next if $other_type eq $type;
+        next if $type eq 'integer' and $other_type eq 'number';
 
         ok(!JSON::Schema::Tiny::is_type($other_type, $value),
           json_sprintf('is_type("'.$other_type.'", %s) is false', $value));
@@ -54,7 +65,7 @@ foreach my $type (sort keys %inflated_data) {
   };
 }
 
-my $decoder = JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 1);
+my $decoder = JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 1, allow_bignum => 1);
 
 foreach my $type (sort keys %json_data) {
   subtest 'JSON-encoded data, type: '.$type => sub {
@@ -62,10 +73,17 @@ foreach my $type (sort keys %json_data) {
       $value = $decoder->decode($value);
       my $value_copy = $value;
       ok(JSON::Schema::Tiny::is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
-      is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
+      ok(JSON::Schema::Tiny::is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
+        if $type eq 'integer';
+
+      {
+        my $type = $type eq 'integer' ? 'number' : $type;
+        is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
+      }
 
       foreach my $other_type (sort keys %json_data) {
         next if $other_type eq $type;
+        next if $type eq 'integer' and $other_type eq 'number';
 
         ok(!JSON::Schema::Tiny::is_type($other_type, $value),
           json_sprintf('is_type("'.$other_type.'", %s) is false', $value));
@@ -78,7 +96,7 @@ foreach my $type (sort keys %json_data) {
 
 subtest 'type: integer' => sub {
   ok(JSON::Schema::Tiny::is_type('integer', $_), json_sprintf('%s is an integer', $_))
-    foreach (1, 2.0);
+    foreach (1, 2.0, 9223372036854775800000008, $decoder->decode('9223372036854775800000008'));
 
   ok(!JSON::Schema::Tiny::is_type('integer', $_), json_sprintf('%s is not an integer', $_))
     foreach ('1', '2.0', 3.1, '4.2');

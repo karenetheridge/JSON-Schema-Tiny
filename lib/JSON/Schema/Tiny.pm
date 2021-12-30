@@ -23,6 +23,7 @@ use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 qw(any none);
 use Scalar::Util 'blessed';
+use if "$]" >= 5.022, POSIX => 'isinf';
 use namespace::clean;
 use Exporter 5.57 'import';
 
@@ -447,37 +448,50 @@ sub _eval_keyword_multipleOf ($data, $schema, $state) {
 
   return 1 if not is_type('number', $data);
 
-  my $quotient = $data / $schema->{multipleOf};
-  return 1 if int($quotient) == $quotient and $quotient !~ /^-?Inf$/i;
-  return E($state, 'value is not a multiple of %g', $schema->{multipleOf});
+  # if either value is a float, use the bignum library for the calculation
+  if (ref($data) =~ /^Math::Big(?:Int|Float)$/ or ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/) {
+    $data = ref($data) =~ /^Math::Big(?:Int|Float)$/ ? $data->copy : Math::BigFloat->new($data);
+    my $divisor = ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/ ? $schema->{multipleOf} : Math::BigFloat->new($schema->{multipleOf});
+    my ($quotient, $remainder) = $data->bdiv($divisor);
+    return E($state, 'overflow while calculating quotient') if $quotient->is_inf;
+    return 1 if $remainder == 0;
+  }
+  else {
+    my $quotient = $data / $schema->{multipleOf};
+    return E($state, 'overflow while calculating quotient')
+      if "$]" >= 5.022 ? isinf($quotient) : $quotient =~ /^-?Inf$/i;
+    return 1 if int($quotient) == $quotient;
+  }
+
+  return E($state, 'value is not a multiple of %s', sprintf_num($schema->{multipleOf}));
 }
 
 sub _eval_keyword_maximum ($data, $schema, $state) {
   assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
   return 1 if $data <= $schema->{maximum};
-  return E($state, 'value is larger than %g', $schema->{maximum});
+  return E($state, 'value is larger than %s', sprintf_num($schema->{maximum}));
 }
 
 sub _eval_keyword_exclusiveMaximum ($data, $schema, $state) {
   assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
   return 1 if $data < $schema->{exclusiveMaximum};
-  return E($state, 'value is equal to or larger than %g', $schema->{exclusiveMaximum});
+  return E($state, 'value is equal to or larger than %s', sprintf_num($schema->{exclusiveMaximum}));
 }
 
 sub _eval_keyword_minimum ($data, $schema, $state) {
   assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
   return 1 if $data >= $schema->{minimum};
-  return E($state, 'value is smaller than %g', $schema->{minimum});
+  return E($state, 'value is smaller than %s', sprintf_num($schema->{minimum}));
 }
 
 sub _eval_keyword_exclusiveMinimum ($data, $schema, $state) {
   assert_keyword_type($state, $schema, 'number');
   return 1 if not is_type('number', $data);
   return 1 if $data > $schema->{exclusiveMinimum};
-  return E($state, 'value is equal to or smaller than %g', $schema->{exclusiveMinimum});
+  return E($state, 'value is equal to or smaller than %s', sprintf_num($schema->{exclusiveMinimum}));
 }
 
 sub _eval_keyword_maxLength ($data, $schema, $state) {
@@ -1026,20 +1040,21 @@ sub is_type ($type, $value) {
   }
 
   if ($type eq 'string' or $type eq 'number' or $type eq 'integer') {
-    return 0 if not defined $value or is_ref($value);
+    return 0 if not defined $value;
     my $flags = B::svref_2object(\$value)->FLAGS;
 
     if ($type eq 'string') {
-      return $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
+      return !is_ref($value) && $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
     }
 
     if ($type eq 'number') {
-      return !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
+      return ref($value) =~ /^Math::Big(?:Int|Float)$/
+        || !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
     }
 
     if ($type eq 'integer') {
-      return !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK))
-        && int($value) == $value;
+      return ref($value) =~ /^Math::Big(?:Int|Float)$/ && $value->is_int
+        || !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK)) && int($value) == $value;
     }
   }
 
@@ -1058,14 +1073,15 @@ sub get_type ($value) {
   return 'array' if is_plain_arrayref($value);
   return 'boolean' if is_bool($value);
 
-  return (blessed($value) ? '' : 'reference to ').ref($value) if is_ref($value);
+  return ref($value) =~ /^Math::Big(?:Int|Float)$/ ? 'number' : (blessed($value) ? '' : 'reference to ').ref($value)
+    if is_ref($value);
 
   my $flags = B::svref_2object(\$value)->FLAGS;
   return 'string' if $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
   return 'number' if !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
 
   croak sprintf('ambiguous type for %s',
-    JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 0)->encode($value));
+    JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 0, allow_bignum => 1, allow_blessed => 1)->encode($value));
 }
 
 # compares two arbitrary data payloads for equality, as per
@@ -1231,6 +1247,11 @@ sub assert_array_schemas ($schema, $state) {
   return 1;
 }
 
+sub sprintf_num ($value) {
+  # use original value as stored in the NV, without losing precision
+  ref($value) =~ /^Math::Big(?:Int|Float)$/ ? $value->bstr : sprintf('%s', $value);
+}
+
 1;
 __END__
 
@@ -1266,7 +1287,7 @@ validator, supporting the most popular keywords.
 
 =for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
-new assert_uri_reference
+new assert_uri_reference sprintf_num
 
 =head2 evaluate
 
