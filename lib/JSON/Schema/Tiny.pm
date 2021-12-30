@@ -7,11 +7,11 @@ package JSON::Schema::Tiny;
 
 our $VERSION = '0.012';
 
-use 5.016;  # for the unicode_strings feature
+use 5.020;  # for unicode_strings, signatures, postderef features
+use experimental qw(signatures postderef);
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
-
 use B;
 use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref is_arrayref);
 use Mojo::URL;
