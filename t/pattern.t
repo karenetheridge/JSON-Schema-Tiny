@@ -16,9 +16,7 @@ use JSON::Schema::Tiny 'evaluate';
 use lib 't/lib';
 use Helper;
 
-my $tests = sub {
-  my ($char, $test_substr) = @_;
-
+my $tests = sub ($char, $test_substr) {
   cmp_deeply(
     evaluate($char, { pattern => '[a-z]' }),
     {

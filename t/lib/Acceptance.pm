@@ -23,9 +23,7 @@ BEGIN {
   note '';
 }
 
-sub acceptance_tests {
-  my (%options) = @_;
-
+sub acceptance_tests (%options) {
   local $Test::Builder::Level = $Test::Builder::Level + 1;
   my $accepter = Test::JSON::Schema::Acceptance->new(
     include_optional => 1,
@@ -43,8 +41,7 @@ sub acceptance_tests {
   $encoder->indent_length(2) if $encoder->can('indent_length');
 
   $accepter->acceptance(
-    validate_data => sub {
-      my ($schema, $instance_data) = @_;
+    validate_data => sub ($schema, $instance_data) {
       my $result = $js->evaluate($instance_data, $schema);
       my $result_short = $ENV{NO_SHORT_CIRCUIT} || $js_short_circuit->evaluate($instance_data, $schema);
 
