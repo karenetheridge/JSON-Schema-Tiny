@@ -390,7 +390,7 @@ sub _eval_keyword_vocabulary {
 
   foreach my $property (sort keys %{$schema->{'$vocabulary'}}) {
     assert_keyword_type({ %$state, _schema_path_suffix => $property }, $schema, 'boolean');
-    assert_uri($state, $schema, $property);
+    assert_uri($state, undef, $property);
   }
 
   abort($state, '$vocabulary can only appear at the schema resource root')
