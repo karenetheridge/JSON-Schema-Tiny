@@ -134,7 +134,7 @@ sub _eval_subschema ($data, $schema, $state) {
 
   # find all schema locations in effect at this data path + canonical_uri combination
   # if any of them are absolute prefix of this schema location, we are in a loop.
-  my $canonical_uri = canonical_schema_uri($state);
+  my $canonical_uri = canonical_uri($state);
   my $schema_location = $state->{traversed_schema_path}.$state->{schema_path};
   abort($state, 'EXCEPTION: infinite loop detected (same location evaluated twice)')
     if grep substr($schema_location, 0, length) eq $_,
@@ -204,7 +204,7 @@ sub _eval_subschema ($data, $schema, $state) {
   foreach my $keyword (sort keys $removed_keywords{$spec_version}->%*) {
     next if not exists $schema->{$keyword};
     my $message ='no-longer-supported "'.$keyword.'" keyword present (at location "'
-      .canonical_schema_uri($state).'")';
+      .canonical_uri($state).'")';
     if (my $alternates = $removed_keywords{$spec_version}->{$keyword}) {
       my @list = map '"'.$_.'"', @$alternates;
       @list = ((map $_.',', @list[0..$#list-1]), $list[-1]) if @list > 2;
@@ -355,7 +355,7 @@ sub _eval_keyword_recursiveAnchor ($data, $schema, $state) {
 
   # record the canonical location of the current position, to be used against future resolution
   # of a $recursiveRef uri -- as if it was the current location when we encounter a $ref.
-  $state->{recursive_anchor_uri} = canonical_schema_uri($state);
+  $state->{recursive_anchor_uri} = canonical_uri($state);
 
   return 1;
 }
@@ -1129,7 +1129,7 @@ sub jsonp {
 }
 
 # shorthand for finding the canonical uri of the present schema location
-sub canonical_schema_uri ($state, @extra_path) {
+sub canonical_uri ($state, @extra_path) {
   splice(@extra_path, -1, 1, $extra_path[-1]->@*) if @extra_path and is_arrayref($extra_path[-1]);
   my $uri = $state->{initial_schema_uri}->clone;
   $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, @extra_path));
@@ -1140,7 +1140,7 @@ sub canonical_schema_uri ($state, @extra_path) {
 # shorthand for creating error objects
 sub E ($state, $error_string, @args) {
   # sometimes the keyword shouldn't be at the very end of the schema path
-  my $uri = canonical_schema_uri($state, $state->{keyword}, $state->{_schema_path_suffix});
+  my $uri = canonical_uri($state, $state->{keyword}, $state->{_schema_path_suffix});
 
   my $keyword_location = $state->{traversed_schema_path}
     .jsonp($state->{schema_path}, $state->{keyword}, delete $state->{_schema_path_suffix});
@@ -1264,7 +1264,7 @@ validator, supporting the most popular keywords.
 
 =head1 FUNCTIONS
 
-=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
+=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
 new assert_uri_reference
 
