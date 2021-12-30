@@ -148,6 +148,8 @@ sub _eval_subschema {
   return $schema || E($state, 'subschema is false') if $schema_type eq 'boolean';
   abort($state, 'invalid schema type: %s', $schema_type) if $schema_type ne 'object';
 
+  return 1 if not keys %$schema;
+
   my $valid = 1;
   my $spec_version = $state->{spec_version}//'';
 
