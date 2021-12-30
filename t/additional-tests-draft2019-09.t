@@ -34,7 +34,7 @@ my @warnings = warnings {
         { file => 'keyword-independence.json', group_description => [
           grep /unevaluated/,
           map $_->{description},
-          @{ decode_json(path('t/additional-tests-'.$version.'/keyword-independence.json')->slurp_raw) }
+          decode_json(path('t/additional-tests-'.$version.'/keyword-independence.json')->slurp_raw)->@*
         ] },
       ] ),
     },

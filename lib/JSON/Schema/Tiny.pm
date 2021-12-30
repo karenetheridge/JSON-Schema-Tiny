@@ -83,7 +83,7 @@ sub evaluate {
   }
   catch ($e) {
     if (is_plain_hashref($e)) {
-      push @{$state->{errors}}, $e;
+      push $state->{errors}->@*, $e;
     }
     else {
       E($state, 'EXCEPTION: '.$e);
@@ -92,7 +92,7 @@ sub evaluate {
     $valid = 0;
   }
 
-  warn 'result is false but there are no errors' if not $valid and not @{$state->{errors}};
+  warn 'result is false but there are no errors' if not $valid and not $state->{errors}->@*;
 
   return $BOOLEAN_RESULT ? $valid : +{
     valid => $valid ? JSON::PP::true : JSON::PP::false,
@@ -130,7 +130,7 @@ sub _eval_subschema {
   # do not propagate upwards changes to depth, traversed paths,
   # but additions to errors are by reference and will be retained
   $state = { %$state };
-  delete @{$state}{'keyword', grep /^_/, keys %$state};
+  delete $state->@{'keyword', grep /^_/, keys %$state};
 
   abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
     if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
@@ -141,7 +141,7 @@ sub _eval_subschema {
   my $schema_location = $state->{traversed_schema_path}.$state->{schema_path};
   abort($state, 'EXCEPTION: infinite loop detected (same location evaluated twice)')
     if grep substr($schema_location, 0, length) eq $_,
-      keys %{$state->{seen}{$state->{data_path}}{$canonical_uri}};
+      keys $state->{seen}{$state->{data_path}}{$canonical_uri}->%*;
   $state->{seen}{$state->{data_path}}{$canonical_uri}{$schema_location}++;
 
   my $schema_type = get_type($schema);
@@ -191,12 +191,12 @@ sub _eval_subschema {
       and exists $schema->{'$ref'} and $spec_version eq 'draft7';
 
     $state->{keyword} = $keyword;
-    my $error_count = @{$state->{errors}};
+    my $error_count = $state->{errors}->@*;
 
     my $sub = __PACKAGE__->can('_eval_keyword_'.($keyword =~ s/^\$//r));
     if (not $sub->($data, $schema, $state)) {
       warn 'result is false but there are no errors (keyword: '.$keyword.')'
-        if $error_count == @{$state->{errors}};
+        if $error_count == $state->{errors}->@*;
       $valid = 0;
     }
 
@@ -204,7 +204,7 @@ sub _eval_subschema {
   }
 
   # check for previously-supported but now removed keywords
-  foreach my $keyword (sort keys %{$removed_keywords{$spec_version}}) {
+  foreach my $keyword (sort keys $removed_keywords{$spec_version}->%*) {
     next if not exists $schema->{$keyword};
     my $message ='no-longer-supported "'.$keyword.'" keyword present (at location "'
       .canonical_schema_uri($state).'")';
@@ -390,7 +390,7 @@ sub _eval_keyword_vocabulary {
 
   assert_keyword_type($state, $schema, 'object');
 
-  foreach my $property (sort keys %{$schema->{'$vocabulary'}}) {
+  foreach my $property (sort keys $schema->{'$vocabulary'}->%*) {
     assert_keyword_type({ %$state, _schema_path_suffix => $property }, $schema, 'boolean');
     assert_uri($state, undef, $property);
   }
@@ -422,18 +422,18 @@ sub _eval_keyword_type {
   my ($data, $schema, $state) = @_;
 
   if (is_plain_arrayref($schema->{type})) {
-    abort($state, 'type array is empty') if not @{$schema->{type}};
-    foreach my $type (@{$schema->{type}}) {
+    abort($state, 'type array is empty') if not $schema->{type}->@*;
+    foreach my $type ($schema->{type}->@*) {
       abort($state, 'unrecognized type "%s"', $type//'<null>')
         if not any { ($type//'') eq $_ } qw(null boolean object array string number integer);
     }
     abort($state, '"type" values are not unique') if not is_elements_unique($schema->{type});
 
-    foreach my $type (@{$schema->{type}}) {
+    foreach my $type ($schema->{type}->@*) {
       return 1 if is_type($type, $data)
         or ($type eq 'boolean' and $SCALARREF_BOOLEANS and is_type('reference to SCALAR', $data));
     }
-    return E($state, 'wrong type (expected one of %s)', join(', ', @{$schema->{type}}));
+    return E($state, 'wrong type (expected one of %s)', join(', ', $schema->{type}->@*));
   }
   else {
     assert_keyword_type($state, $schema, 'string');
@@ -453,7 +453,7 @@ sub _eval_keyword_enum {
   abort($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
 
   my @s; my $idx = 0;
-  return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } @{$schema->{enum}};
+  return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } $schema->{enum}->@*;
 
   return E($state, 'value does not match'
     .(!(grep $_->{path}, @s) ? ''
@@ -631,12 +631,12 @@ sub _eval_keyword_required {
 
   assert_keyword_type($state, $schema, 'array');
   abort($state, '"required" element is not a string')
-    if any { !is_type('string', $_) } @{$schema->{required}};
+    if any { !is_type('string', $_) } $schema->{required}->@*;
   abort($state, '"required" values are not unique') if not is_elements_unique($schema->{required});
 
   return 1 if not is_type('object', $data);
 
-  my @missing = grep !exists $data->{$_}, @{$schema->{required}};
+  my @missing = grep !exists $data->{$_}, $schema->{required}->@*;
   return 1 if not @missing;
   return E($state, 'missing propert%s: %s', @missing > 1 ? 'ies' : 'y', join(', ', @missing));
 }
@@ -646,11 +646,11 @@ sub _eval_keyword_dependentRequired {
 
   assert_keyword_type($state, $schema, 'object');
 
-  foreach my $property (sort keys %{$schema->{dependentRequired}}) {
+  foreach my $property (sort keys $schema->{dependentRequired}->%*) {
     E({ %$state, _schema_path_suffix => $property }, 'value is not an array'), next
       if not is_type('array', $schema->{dependentRequired}{$property});
 
-    foreach my $index (0..$#{$schema->{dependentRequired}{$property}}) {
+    foreach my $index (0..$schema->{dependentRequired}{$property}->$#*) {
       abort({ %$state, _schema_path_suffix => [ $property, $index ] }, 'element #%d is not a string', $index)
         if not is_type('string', $schema->{dependentRequired}{$property}[$index]);
     }
@@ -662,10 +662,10 @@ sub _eval_keyword_dependentRequired {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (sort keys %{$schema->{dependentRequired}}) {
+  foreach my $property (sort keys $schema->{dependentRequired}->%*) {
     next if not exists $data->{$property};
 
-    if (my @missing = grep !exists($data->{$_}), @{$schema->{dependentRequired}{$property}}) {
+    if (my @missing = grep !exists($data->{$_}), $schema->{dependentRequired}{$property}->@*) {
       $valid = E({ %$state, _schema_path_suffix => $property },
         'missing propert%s: %s', @missing > 1 ? 'ies' : 'y', join(', ', @missing));
     }
@@ -681,7 +681,7 @@ sub _eval_keyword_allOf {
   assert_array_schemas($schema, $state);
 
   my @invalid;
-  foreach my $idx (0 .. $#{$schema->{allOf}}) {
+  foreach my $idx (0..$schema->{allOf}->$#*) {
     next if _eval_subschema($data, $schema->{allOf}[$idx],
       +{ %$state, schema_path => $state->{schema_path}.'/allOf/'.$idx });
 
@@ -702,7 +702,7 @@ sub _eval_keyword_anyOf {
 
   my $valid = 0;
   my @errors;
-  foreach my $idx (0 .. $#{$schema->{anyOf}}) {
+  foreach my $idx (0..$schema->{anyOf}->$#*) {
     next if not _eval_subschema($data, $schema->{anyOf}[$idx],
       +{ %$state, errors => \@errors, schema_path => $state->{schema_path}.'/anyOf/'.$idx });
     ++$valid;
@@ -710,7 +710,7 @@ sub _eval_keyword_anyOf {
   }
 
   return 1 if $valid;
-  push @{$state->{errors}}, @errors;
+  push $state->{errors}->@*, @errors;
   return E($state, 'no subschemas are valid');
 }
 
@@ -720,7 +720,7 @@ sub _eval_keyword_oneOf {
   assert_array_schemas($schema, $state);
 
   my (@valid, @errors);
-  foreach my $idx (0 .. $#{$schema->{oneOf}}) {
+  foreach my $idx (0..$schema->{oneOf}->$#*) {
     next if not _eval_subschema($data, $schema->{oneOf}[$idx],
       +{ %$state, errors => \@errors, schema_path => $state->{schema_path}.'/oneOf/'.$idx });
     push @valid, $idx;
@@ -730,7 +730,7 @@ sub _eval_keyword_oneOf {
   return 1 if @valid == 1;
 
   if (not @valid) {
-    push @{$state->{errors}}, @errors;
+    push $state->{errors}->@*, @errors;
     return E($state, 'no subschemas are valid');
   }
   else {
@@ -769,7 +769,7 @@ sub _eval_keyword_dependentSchemas {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (sort keys %{$schema->{dependentSchemas}}) {
+  foreach my $property (sort keys $schema->{dependentSchemas}->%*) {
     next if not exists $data->{$property}
       or _eval_subschema($data, $schema->{dependentSchemas}{$property},
         +{ %$state, schema_path => jsonp($state->{schema_path}, 'dependentSchemas', $property) });
@@ -790,11 +790,11 @@ sub _eval_keyword_dependencies {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (sort keys %{$schema->{dependencies}}) {
+  foreach my $property (sort keys $schema->{dependencies}->%*) {
     if (is_type('array', $schema->{dependencies}{$property})) {
       # as in dependentRequired
 
-      foreach my $index (0..$#{$schema->{dependencies}{$property}}) {
+      foreach my $index (0..$schema->{dependencies}{$property}->$#*) {
         $valid = E({ %$state, _schema_path_suffix => [ $property, $index ] }, 'element #%d is not a string', $index)
           if not is_type('string', $schema->{dependencies}{$property}[$index]);
       }
@@ -804,7 +804,7 @@ sub _eval_keyword_dependencies {
 
       next if not exists $data->{$property};
 
-      if (my @missing = grep !exists($data->{$_}), @{$schema->{dependencies}{$property}}) {
+      if (my @missing = grep !exists($data->{$_}), $schema->{dependencies}{$property}->@*) {
         $valid = E({ %$state, _schema_path_suffix => $property },
           'missing propert%s: %s', @missing > 1 ? 'ies' : 'y', join(', ', @missing));
       }
@@ -884,13 +884,13 @@ sub _eval_keyword_additionalItems {
 sub _eval_keyword__items_array_schemas {
   my ($data, $schema, $state) = @_;
 
-  abort($state, '%s array is empty', $state->{keyword}) if not @{$schema->{$state->{keyword}}};
+  abort($state, '%s array is empty', $state->{keyword}) if not $schema->{$state->{keyword}}->@*;
   return 1 if not is_type('array', $data);
 
   my $valid = 1;
 
-  foreach my $idx (0 .. $#{$data}) {
-    last if $idx > $#{$schema->{$state->{keyword}}};
+  foreach my $idx (0..$data->$#*) {
+    last if $idx > $schema->{$state->{keyword}}->$#*;
     $state->{_last_items_index} = $idx;
 
     if (is_type('boolean', $schema->{$state->{keyword}}[$idx])) {
@@ -920,10 +920,10 @@ sub _eval_keyword__items_schema {
   my ($data, $schema, $state) = @_;
 
   return 1 if not is_type('array', $data);
-  return 1 if $state->{_last_items_index} == $#{$data};
+  return 1 if $state->{_last_items_index} == $data->$#*;
 
   my $valid = 1;
-  foreach my $idx ($state->{_last_items_index}+1 .. $#{$data}) {
+  foreach my $idx ($state->{_last_items_index}+1 .. $data->$#*) {
     if (is_type('boolean', $schema->{$state->{keyword}})
         and ($state->{keyword} eq 'additionalItems')) {
       next if $schema->{$state->{keyword}};
@@ -941,7 +941,7 @@ sub _eval_keyword__items_schema {
     last if $state->{short_circuit};
   }
 
-  $state->{_last_items_index} = $#{$data};
+  $state->{_last_items_index} = $data->$#*;
 
   return E($state, 'subschema is not valid against all %sitems',
       exists $schema->{prefixItems} || $state->{keyword} eq 'additionalItems' ? 'additional ' : '')
@@ -956,7 +956,7 @@ sub _eval_keyword_contains {
 
   $state->{_num_contains} = 0;
   my @errors;
-  foreach my $idx (0 .. $#{$data}) {
+  foreach my $idx (0..$data->$#*) {
     if (_eval_subschema($data->[$idx], $schema->{contains},
         +{ %$state, errors => \@errors,
           data_path => $state->{data_path}.'/'.$idx,
@@ -972,7 +972,7 @@ sub _eval_keyword_contains {
   # note: no items contained is only valid when minContains is explicitly 0
   if (not $state->{_num_contains} and (($schema->{minContains}//1) > 0
       or $state->{spec_version} and $state->{spec_version} eq 'draft7')) {
-    push @{$state->{errors}}, @errors;
+    push $state->{errors}->@*, @errors;
     return E($state, 'subschema is not valid against any item');
   }
 
@@ -986,7 +986,7 @@ sub _eval_keyword_properties {
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property (sort keys %{$schema->{properties}}) {
+  foreach my $property (sort keys $schema->{properties}->%*) {
     next if not exists $data->{$property};
 
     if (is_type('boolean', $schema->{properties}{$property})) {
@@ -1014,14 +1014,14 @@ sub _eval_keyword_patternProperties {
 
   assert_keyword_type($state, $schema, 'object');
 
-  foreach my $property (sort keys %{$schema->{patternProperties}}) {
+  foreach my $property (sort keys $schema->{patternProperties}->%*) {
     assert_pattern({ %$state, _schema_path_suffix => $property }, $property);
   }
 
   return 1 if not is_type('object', $data);
 
   my $valid = 1;
-  foreach my $property_pattern (sort keys %{$schema->{patternProperties}}) {
+  foreach my $property_pattern (sort keys $schema->{patternProperties}->%*) {
     foreach my $property (sort grep m/$property_pattern/, keys %$data) {
       if (is_type('boolean', $schema->{patternProperties}{$property_pattern})) {
         next if $schema->{patternProperties}{$property_pattern};
@@ -1053,7 +1053,7 @@ sub _eval_keyword_additionalProperties {
   foreach my $property (sort keys %$data) {
     next if exists $schema->{properties} and exists $schema->{properties}{$property};
     next if exists $schema->{patternProperties}
-      and any { $property =~ /$_/ } keys %{$schema->{patternProperties}};
+      and any { $property =~ /$_/ } keys $schema->{patternProperties}->%*;
 
     if (is_type('boolean', $schema->{additionalProperties})) {
       next if $schema->{additionalProperties};
@@ -1201,7 +1201,7 @@ sub is_equal {
 
   if ($types[0] eq 'array') {
     return 0 if @$x != @$y;
-    foreach my $idx (0 .. $#{$x}) {
+    foreach my $idx (0..$x->$#*) {
       $state->{path} = $path.'/'.$idx;
       return 0 if not is_equal($x->[$idx], $y->[$idx], $state);
     }
@@ -1215,8 +1215,8 @@ sub is_equal {
 # if second arrayref is provided, it is populated with the indices of identical items
 sub is_elements_unique {
   my ($array, $equal_indices) = @_;
-  foreach my $idx0 (0 .. $#{$array}-1) {
-    foreach my $idx1 ($idx0+1 .. $#{$array}) {
+  foreach my $idx0 (0..$array->$#*-1) {
+    foreach my $idx1 ($idx0+1..$array->$#*) {
       if (is_equal($array->[$idx0], $array->[$idx1])) {
         push @$equal_indices, $idx0, $idx1 if defined $equal_indices;
         return 0;
@@ -1235,7 +1235,7 @@ sub jsonp {
 sub canonical_schema_uri {
   my ($state, @extra_path) = @_;
 
-  splice(@extra_path, -1, 1, @{$extra_path[-1]}) if @extra_path and is_arrayref($extra_path[-1]);
+  splice(@extra_path, -1, 1, $extra_path[-1]->@*) if @extra_path and is_arrayref($extra_path[-1]);
   my $uri = $state->{initial_schema_uri}->clone;
   $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, @extra_path));
   $uri->fragment(undef) if not length($uri->fragment);
@@ -1255,7 +1255,7 @@ sub E {
   undef $uri if $uri eq '' and $keyword_location eq ''
     or ($uri->fragment//'') eq $keyword_location and $uri->clone->fragment(undef) eq '';
 
-  push @{$state->{errors}}, {
+  push $state->{errors}->@*, {
     instanceLocation => $state->{data_path},
     keywordLocation => $keyword_location,
     defined $uri ? ( absoluteKeywordLocation => $uri->to_string) : (),
@@ -1271,7 +1271,7 @@ sub E {
 sub abort {
   my ($state, $error_string, @args) = @_;
   E($state, $error_string, @args);
-  die pop @{$state->{errors}};
+  die pop $state->{errors}->@*;
 }
 
 # one common usecase of abort()
@@ -1345,7 +1345,7 @@ sub assert_array_schemas {
   my ($schema, $state) = @_;
 
   assert_keyword_type($state, $schema, 'array');
-  abort($state, '%s array is empty', $state->{keyword}) if not @{$schema->{$state->{keyword}}};
+  abort($state, '%s array is empty', $state->{keyword}) if not $schema->{$state->{keyword}}->@*;
   return 1;
 }
 
