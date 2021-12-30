@@ -13,7 +13,7 @@ no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use B;
-use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref is_arrayref);
+use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref is_plain_arrayref);
 use Mojo::URL;
 use Mojo::JSON::Pointer;
 use Carp qw(croak carp);
@@ -1125,12 +1125,12 @@ sub is_elements_unique ($array, $equal_indices = undef) {
 
 # shorthand for creating and appending json pointers
 sub jsonp {
-  return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, map +(is_arrayref($_) ? @$_ : $_), grep defined, @_);
+  return join('/', shift, map s/~/~0/gr =~ s!/!~1!gr, map +(is_plain_arrayref($_) ? @$_ : $_), grep defined, @_);
 }
 
 # shorthand for finding the canonical uri of the present schema location
 sub canonical_uri ($state, @extra_path) {
-  splice(@extra_path, -1, 1, $extra_path[-1]->@*) if @extra_path and is_arrayref($extra_path[-1]);
+  splice(@extra_path, -1, 1, $extra_path[-1]->@*) if @extra_path and is_plain_arrayref($extra_path[-1]);
   my $uri = $state->{initial_schema_uri}->clone;
   $uri->fragment(($uri->fragment//'').jsonp($state->{schema_path}, @extra_path));
   $uri->fragment(undef) if not length($uri->fragment);
