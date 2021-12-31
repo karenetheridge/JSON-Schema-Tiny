@@ -406,10 +406,10 @@ sub _eval_keyword_type ($data, $schema, $state) {
     }
     abort($state, '"type" values are not unique') if not is_elements_unique($schema->{type});
 
-    foreach my $type ($schema->{type}->@*) {
-      return 1 if is_type($type, $data)
-        or ($type eq 'boolean' and $SCALARREF_BOOLEANS and is_type('reference to SCALAR', $data));
-    }
+    return 1 if any {
+      is_type($_, $data)
+        or ($_ eq 'boolean' and $SCALARREF_BOOLEANS and is_type('reference to SCALAR', $data))
+    } $schema->{type}->@*;
     return E($state, 'wrong type (expected one of %s)', join(', ', $schema->{type}->@*));
   }
   else {
