@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.012     2021-12-31 02:24:05Z
           - minimum perl version raised to 5.020
           - very large/small numbers are now properly accomodated in all
