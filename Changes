@@ -1,6 +1,6 @@
 Revision history for JSON-Schema-Tiny
 
-{{$NEXT}}
+0.013     2021-12-31 21:20:46Z
           - enable bignum mode when deserializing test data
 
 0.012     2021-12-31 02:24:05Z
