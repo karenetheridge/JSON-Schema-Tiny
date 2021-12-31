@@ -1420,4 +1420,11 @@ SOURCES.>
 * L<https://json-schema.org>
 * L<Understanding JSON Schema|https://json-schema.org/understanding-json-schema>: tutorial-focused documentation
 
+=head1 SUPPORT
+
+=for stopwords OpenAPI
+
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
+server|https://open-api.slack.com>, which are also great resources for finding help.
+
 =cut
