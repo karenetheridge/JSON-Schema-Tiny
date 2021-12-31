@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.011
+version 0.012
 
 =head1 SYNOPSIS
 
@@ -37,9 +37,9 @@ validator, supporting the most popular keywords.
 
 =head1 FUNCTIONS
 
-=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_schema_uri E abort
+=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
-new assert_uri_reference
+new assert_uri_reference sprintf_num
 
 =head2 evaluate
 
@@ -243,6 +243,13 @@ L<https://json-schema.org>
 L<Understanding JSON Schema|https://json-schema.org/understanding-json-schema>: tutorial-focused documentation
 
 =back
+
+=head1 SUPPORT
+
+=for stopwords OpenAPI
+
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI Slack
+server|https://open-api.slack.com>, which are also great resources for finding help.
 
 =head1 SUPPORT
 
