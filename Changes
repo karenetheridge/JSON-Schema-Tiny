@@ -1,6 +1,8 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+         - updated error message for the "type" keyword to include the actual
+           type, as well as the expected type(s)
 
 0.013     2021-12-31 21:20:46Z
           - enable bignum mode when deserializing test data

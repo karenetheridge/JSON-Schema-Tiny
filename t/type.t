@@ -46,11 +46,7 @@ foreach my $type (sort keys %inflated_data) {
       ok(JSON::Schema::Tiny::is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
       ok(JSON::Schema::Tiny::is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
         if $type eq 'integer';
-
-      {
-        my $type = $type eq 'integer' ? 'number' : $type;
-        is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
-      }
+      is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
 
       foreach my $other_type (sort keys %inflated_data) {
         next if $other_type eq $type;
@@ -75,11 +71,7 @@ foreach my $type (sort keys %json_data) {
       ok(JSON::Schema::Tiny::is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
       ok(JSON::Schema::Tiny::is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
         if $type eq 'integer';
-
-      {
-        my $type = $type eq 'integer' ? 'number' : $type;
-        is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
-      }
+      is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
 
       foreach my $other_type (sort keys %json_data) {
         next if $other_type eq $type;
