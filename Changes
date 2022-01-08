@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+         - pod fixes
 
 0.014     2022-01-06 04:05:12Z
          - updated error message for the "type" keyword to include the actual
