@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+         - avoid new experimental warning on 5.35.9
 
 0.015     2022-01-29 17:52:15Z
          - pod fixes
