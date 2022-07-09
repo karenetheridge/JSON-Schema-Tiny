@@ -58,8 +58,12 @@ sub evaluate {
   shift
     if blessed($_[0]) and blessed($_[0])->isa(__PACKAGE__);
 
-  croak '$SPECIFICATION_VERSION value is invalid'
-    if defined $SPECIFICATION_VERSION and none { $SPECIFICATION_VERSION eq $_ } values %version_uris;
+  if (defined $SPECIFICATION_VERSION) {
+    $SPECIFICATION_VERSION = 'draft'.$SPECIFICATION_VERSION
+      if $SPECIFICATION_VERSION !~ /^draft/ and any { 'draft'.$SPECIFICATION_VERSION eq $_ } values %version_uris;
+
+    croak '$SPECIFICATION_VERSION value is invalid' if none { $SPECIFICATION_VERSION eq $_ } values %version_uris;
+  }
 
   croak 'insufficient arguments' if @_ < 2;
   my ($data, $schema) = @_;
@@ -1374,11 +1378,11 @@ honoured (when otherwise supported).
 Supported values for this option, and the corresponding values for the C<$schema> keyword, are:
 
 =for :list
-* L<C<draft2020-12>|https://json-schema.org/specification-links.html#2020-12>,
+* L<C<draft2020-12> or C<2020-12>|https://json-schema.org/specification-links.html#2020-12>,
   corresponding to metaschema C<https://json-schema.org/draft/2020-12/schema>
-* L<C<draft2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
-  corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>.
-* L<C<draft7>|https://json-schema.org/specification-links.html#draft-7>,
+* L<C<draft2019-09> or C<2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
+  corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>
+* L<C<draft7> or C<7>|https://json-schema.org/specification-links.html#draft-7>,
   corresponding to metaschema C<http://json-schema.org/draft-07/schema#>
 
 Defaults to undef.
