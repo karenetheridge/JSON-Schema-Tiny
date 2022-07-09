@@ -5,7 +5,7 @@ package JSON::Schema::Tiny;
 # ABSTRACT: Validate data against a schema, minimally
 # KEYWORDS: JSON Schema data validation structure specification tiny
 
-our $VERSION = '0.016';
+our $VERSION = '0.017';
 
 use 5.020;  # for unicode_strings, signatures, postderef features
 use experimental qw(signatures postderef args_array_with_signatures);
