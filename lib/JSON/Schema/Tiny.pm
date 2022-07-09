@@ -1427,7 +1427,7 @@ representation in an attempt to derive the true "intended" type of the value. Ho
 used in another context (for example, a numeric value is concatenated into a string, or a numeric
 string is used in an arithmetic operation), additional flags can be added onto the variable causing
 it to resemble the other type. This should not be an issue if data validation is occurring
-immediately after decoding a JSON payload.
+immediately after decoding a JSON (or YAML) payload.
 
 For more information, see L<Cpanel::JSON::XS/MAPPING>.
 
