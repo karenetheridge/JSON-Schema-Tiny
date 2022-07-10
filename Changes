@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+         - fix 'experimental' prereq for older perls
 
 0.016     2022-07-09 18:29:49Z
          - avoid new experimental warning on 5.35.9
