@@ -259,7 +259,7 @@ sub _eval_keyword_ref ($data, $schema, $state) {
   abort($state, 'only same-document, same-base JSON pointers are supported in %s', $state->{keyword})
     if $uri->clone->fragment(undef) ne Mojo::URL->new($state->{root_schema}{'$id'}//'');
 
-  my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment);
+  my $subschema = Mojo::JSON::Pointer->new($state->{root_schema})->get($uri->fragment//'');
   abort($state, 'EXCEPTION: unable to find resource %s', $uri) if not defined $subschema;
 
   return _eval_subschema($data, $subschema,

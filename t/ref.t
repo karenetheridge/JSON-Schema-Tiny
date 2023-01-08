@@ -71,4 +71,34 @@ subtest 'local anchor' => sub {
   fail;
 };
 
+subtest '$ref using the local $id' => sub {
+  cmp_deeply(
+    evaluate(
+      1,
+      {
+        '$id' => 'https://localhost:1234/blah',
+        '$defs' => { 'my-definition' => true },
+        '$ref' => 'https://localhost:1234/blah#/$defs/my-definition',
+      },
+    ),
+    { valid => true },
+    'can follow $ref using a base URI that matches our document',
+  );
+
+  cmp_deeply(
+    evaluate(
+      [ 'foo', [ 'bar' ] ],
+      {
+        '$id' => 'https://localhost:1234/blah',
+        anyOf => [
+          { type => 'string' },
+          { type => 'array', items => { '$ref' => 'https://localhost:1234/blah' } },
+        ],
+      },
+    ),
+    { valid => true },
+    'can follow $ref using a base URI that matches our document',
+  );
+};
+
 done_testing;
