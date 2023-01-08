@@ -2,6 +2,7 @@ Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
          - fix warning when using a $ref to a URI with no fragment
+         - update test skip list for latest release of the test suite
 
 0.018     2022-08-06 22:02:20Z
          - update test skip list for latest release of the test suite
