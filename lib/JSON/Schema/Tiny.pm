@@ -520,7 +520,7 @@ sub _eval_keyword_pattern ($data, $schema, $state) {
   assert_pattern($state, $schema->{pattern});
 
   return 1 if not is_type('string', $data);
-  return 1 if $data =~ m/$schema->{pattern}/;
+  return 1 if $data =~ m/(?:$schema->{pattern})/;
   return E($state, 'pattern does not match');
 }
 
@@ -950,7 +950,7 @@ sub _eval_keyword_patternProperties ($data, $schema, $state) {
 
   my $valid = 1;
   foreach my $property_pattern (sort keys $schema->{patternProperties}->%*) {
-    foreach my $property (sort grep m/$property_pattern/, keys %$data) {
+    foreach my $property (sort grep m/(?:$property_pattern)/, keys %$data) {
       if (is_type('boolean', $schema->{patternProperties}{$property_pattern})) {
         next if $schema->{patternProperties}{$property_pattern};
         $valid = E({ %$state, data_path => jsonp($state->{data_path}, $property),
@@ -979,7 +979,7 @@ sub _eval_keyword_additionalProperties ($data, $schema, $state) {
   foreach my $property (sort keys %$data) {
     next if exists $schema->{properties} and exists $schema->{properties}{$property};
     next if exists $schema->{patternProperties}
-      and any { $property =~ /$_/ } keys $schema->{patternProperties}->%*;
+      and any { $property =~ /(?:$_)/ } keys $schema->{patternProperties}->%*;
 
     if (is_type('boolean', $schema->{additionalProperties})) {
       next if $schema->{additionalProperties};
