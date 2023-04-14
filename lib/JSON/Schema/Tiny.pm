@@ -431,7 +431,6 @@ sub _eval_keyword_type ($data, $schema, $state) {
 
 sub _eval_keyword_enum ($data, $schema, $state) {
   assert_keyword_type($state, $schema, 'array');
-  abort($state, '"enum" values are not unique') if not is_elements_unique($schema->{enum});
 
   my @s; my $idx = 0;
   return 1 if any { is_equal($data, $_, $s[$idx++] = {}) } $schema->{enum}->@*;
