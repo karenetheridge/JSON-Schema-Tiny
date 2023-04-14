@@ -3,6 +3,8 @@ Revision history for JSON-Schema-Tiny
 {{$NEXT}}
           - fix bad handling of empty patterns in "pattern",
             "patternProperties" keywords
+          - use bignum calculations for any non-integer in "multipleOf", to
+            better handle overflows on older architectures
 
 0.020     2023-04-12 03:28:28Z
           - update test results and exemptions for TJSA 1.019

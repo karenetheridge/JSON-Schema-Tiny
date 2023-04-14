@@ -23,6 +23,7 @@ use JSON::PP ();
 use List::Util 1.33 qw(any none);
 use Scalar::Util 'blessed';
 use if "$]" >= 5.022, POSIX => 'isinf';
+use Math::BigFloat;
 use namespace::clean;
 use Exporter 5.57 'import';
 
@@ -453,7 +454,9 @@ sub _eval_keyword_multipleOf ($data, $schema, $state) {
   return 1 if not is_type('number', $data);
 
   # if either value is a float, use the bignum library for the calculation
-  if (ref($data) =~ /^Math::Big(?:Int|Float)$/ or ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/) {
+  if (ref($data) =~ /^Math::Big(?:Int|Float)$/
+      or ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/
+      or get_type($data) eq 'number' or get_type($schema->{multipleOf}) eq 'number') {
     $data = ref($data) =~ /^Math::Big(?:Int|Float)$/ ? $data->copy : Math::BigFloat->new($data);
     my $divisor = ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/ ? $schema->{multipleOf} : Math::BigFloat->new($schema->{multipleOf});
     my ($quotient, $remainder) = $data->bdiv($divisor);
