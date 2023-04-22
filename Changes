@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.021     2023-04-22 17:25:12Z
           - fix bad handling of empty patterns in "pattern",
             "patternProperties" keywords
