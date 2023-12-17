@@ -50,6 +50,7 @@ acceptance_tests(
           'remote ref, containing refs itself',
           'Recursive references between schemas',
           'Location-independent identifier',
+          'Reference an anchor with a non-relative URI',
           'Location-independent identifier with base URI change in subschema',
           'refs with relative uris and defs',
           'relative refs with absolute uris and defs',
