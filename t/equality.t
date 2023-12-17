@@ -122,4 +122,33 @@ subtest 'equality, using scalarref booleans' => sub {
   }
 };
 
+subtest 'equality, using stringy numbers' => sub {
+  local $JSON::Schema::Tiny::STRINGY_NUMBERS = 1;
+
+  foreach my $test (
+    [ 1, 1, true ],
+    [ 1, 1.0, true ],
+    [ 1, '1.0', true ],
+    [ '1.1', 1.1, true ],
+    [ '1', 1, true ],
+    [ '1.1', 1.1, true ],
+    [ '1', '1.00', true ],
+    [ '1.10', '1.1000', true ],
+    [ 'x', 'x', true ],
+    [ 'x', 'y', false ],
+  ) {
+    my ($x, $y, $expected, $diff_path) = @$test;
+    my @types = map JSON::Schema::Tiny::get_type($_), $x, $y;
+    my $result = JSON::Schema::Tiny::is_equal($x, $y, my $state = {});
+
+    ok(!($result xor $expected), json_sprintf('%s == %s is %s', $x, $y, $expected));
+    is($state->{path}, $diff_path // '', 'two instances differ at the expected place') if not $expected;
+
+    ok(JSON::Schema::Tiny::is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
+    ok(JSON::Schema::Tiny::is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
+
+    note '';
+  }
+};
+
 done_testing;

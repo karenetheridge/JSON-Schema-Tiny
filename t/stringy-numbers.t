@@ -184,6 +184,40 @@ foreach my $config (0, 1) {
   ) if $config == 1;
 
   is(JSON::Schema::Tiny::get_type($data), 'string', 'data was not mutated');
+
+
+  $schema = {
+    enum => [11, 12],
+    const => 11,
+  };
+
+  cmp_deeply(
+    evaluate($data, $schema),
+    {
+      valid => false,
+      errors => [
+        {
+          instanceLocation => '',
+          keywordLocation => '/enum',
+          error => 'value does not match',
+        },
+        {
+          instanceLocation => '',
+          keywordLocation => '/const',
+          error => 'value does not match',
+        },
+      ],
+    },
+    'by default, stringy numbers are not the same as numbers using comparison keywords',
+  ) if $config == 0;
+
+  cmp_deeply(
+    evaluate($data, $schema),
+    { valid => true },
+    'with the config enabled, stringy numbers are the same as numbers using comparison keywords',
+  ) if $config == 1;
+
+  is(JSON::Schema::Tiny::get_type($data), 'string', 'data was not mutated');
 }
 
 done_testing;
