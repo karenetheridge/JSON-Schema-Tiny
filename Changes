@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.022     2023-12-17 00:42:56Z
           - new $STRINGY_NUMBERS option, for validating numbers more loosely
 
