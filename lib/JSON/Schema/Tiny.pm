@@ -465,11 +465,10 @@ sub _eval_keyword_multipleOf ($data, $schema, $state) {
       and do { $data = 0+$data; 1 });
 
   # if either value is a float, use the bignum library for the calculation
-  if (ref($data) =~ /^Math::Big(?:Int|Float)$/
-      or ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/
+  if (is_bignum($data) or is_bignum($schema->{multipleOf})
       or get_type($data) eq 'number' or get_type($schema->{multipleOf}) eq 'number') {
-    $data = ref($data) =~ /^Math::Big(?:Int|Float)$/ ? $data->copy : Math::BigFloat->new($data);
-    my $divisor = ref($schema->{multipleOf}) =~ /^Math::Big(?:Int|Float)$/ ? $schema->{multipleOf} : Math::BigFloat->new($schema->{multipleOf});
+    $data = is_bignum($data) ? $data->copy : Math::BigFloat->new($data);
+    my $divisor = is_bignum($schema->{multipleOf}) ? $schema->{multipleOf} : Math::BigFloat->new($schema->{multipleOf});
     my ($quotient, $remainder) = $data->bdiv($divisor);
     return E($state, 'overflow while calculating quotient') if $quotient->is_inf;
     return 1 if $remainder == 0;
@@ -1070,12 +1069,12 @@ sub is_type ($type, $value) {
     }
 
     if ($type eq 'number') {
-      return ref($value) =~ /^Math::Big(?:Int|Float)$/
+      return is_bignum($value)
         || !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
     }
 
     if ($type eq 'integer') {
-      return ref($value) =~ /^Math::Big(?:Int|Float)$/ && $value->is_int
+      return is_bignum($value) && $value->is_int
         || !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK)) && int($value) == $value;
     }
   }
@@ -1093,7 +1092,7 @@ sub get_type ($value) {
   return 'array' if is_plain_arrayref($value);
   return 'boolean' if is_bool($value);
 
-  return ref($value) =~ /^Math::Big(?:Int|Float)$/ ? ($value->is_int ? 'integer' : 'number')
+  return is_bignum($value) ? ($value->is_int ? 'integer' : 'number')
       : (blessed($value) ? '' : 'reference to ').ref($value)
     if is_ref($value);
 
@@ -1112,6 +1111,10 @@ sub is_bool ($value) {
     and ($value->isa('JSON::PP::Boolean')
       or $value->isa('Cpanel::JSON::XS::Boolean')
       or $value->isa('JSON::XS::Boolean'));
+}
+
+sub is_bignum ($value) {
+  ref($value) =~ /^Math::Big(?:Int|Float)$/;
 }
 
 # compares two arbitrary data payloads for equality, as per
@@ -1286,7 +1289,7 @@ sub assert_array_schemas ($schema, $state) {
 
 sub sprintf_num ($value) {
   # use original value as stored in the NV, without losing precision
-  ref($value) =~ /^Math::Big(?:Int|Float)$/ ? $value->bstr : sprintf('%s', $value);
+  is_bignum($value) ? $value->bstr : sprintf('%s', $value);
 }
 
 1;
@@ -1322,7 +1325,7 @@ validator, supporting the most popular keywords.
 
 =head1 FUNCTIONS
 
-=for Pod::Coverage is_type get_type is_bool is_equal is_elements_unique jsonp canonical_uri E abort
+=for Pod::Coverage is_type get_type is_bool is_bignum is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
 new assert_uri_reference sprintf_num
 
