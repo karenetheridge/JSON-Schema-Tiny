@@ -20,7 +20,7 @@ use Mojo::URL;
 use Mojo::JSON::Pointer;
 use Carp qw(croak carp);
 use Storable 'dclone';
-use JSON::MaybeXS 1.004001 'is_bool';
+use Mojo::JSON ();  # for JSON_XS, MOJO_NO_JSON_XS environment variables
 use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 qw(any none);
@@ -1103,7 +1103,15 @@ sub get_type ($value) {
     if !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
 
   croak sprintf('ambiguous type for %s',
-    JSON::MaybeXS->new(allow_nonref => 1, canonical => 1, utf8 => 0)->encode($value));
+    (Mojo::JSON::JSON_XS ? 'Cpanel::JSON::XS' : 'JSON::PP')->new->allow_nonref(1)->canonical(1)->utf8(0)->encode($value));
+}
+
+# lifted from JSON::MaybeXS
+sub is_bool ($value) {
+  Scalar::Util::blessed($value)
+    and ($value->isa('JSON::PP::Boolean')
+      or $value->isa('Cpanel::JSON::XS::Boolean')
+      or $value->isa('JSON::XS::Boolean'));
 }
 
 # compares two arbitrary data payloads for equality, as per
@@ -1314,7 +1322,7 @@ validator, supporting the most popular keywords.
 
 =head1 FUNCTIONS
 
-=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_uri E abort
+=for Pod::Coverage is_type get_type is_bool is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
 new assert_uri_reference sprintf_num
 

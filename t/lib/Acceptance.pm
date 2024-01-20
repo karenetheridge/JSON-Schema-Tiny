@@ -40,7 +40,7 @@ sub acceptance_tests (%options) {
   my $js = JSON::Schema::Tiny->new($options{evaluator}->%*);
   my $js_short_circuit = $ENV{NO_SHORT_CIRCUIT} || JSON::Schema::Tiny->new($options{evaluator}->%*, short_circuit => 1);
 
-  my $encoder = JSON::MaybeXS->new(allow_nonref => 1, utf8 => 0, canonical => 1, pretty => 1);
+  my $encoder = (Mojo::JSON::JSON_XS ? 'Cpanel::JSON::XS' : 'JSON::PP')->new->allow_nonref(1)->utf8(0)->canonical(1)->pretty(1);
   $encoder->indent_length(2) if $encoder->can('indent_length');
 
   $accepter->acceptance(
