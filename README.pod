@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.022
+version 0.023
 
 =head1 SYNOPSIS
 
@@ -37,7 +37,7 @@ validator, supporting the most popular keywords.
 
 =head1 FUNCTIONS
 
-=for Pod::Coverage is_type get_type is_equal is_elements_unique jsonp canonical_uri E abort
+=for Pod::Coverage is_type get_type is_bool is_bignum is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
 new assert_uri_reference sprintf_num
 
