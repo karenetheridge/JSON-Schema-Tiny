@@ -25,7 +25,8 @@ use Mojo::JSON ();  # for JSON_XS, MOJO_NO_JSON_XS environment variables
 use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 qw(any none);
-use Scalar::Util qw(blessed looks_like_number);
+use Scalar::Util 'looks_like_number';
+use builtin::compat 'blessed';
 use if "$]" >= 5.022, POSIX => 'isinf';
 use Math::BigFloat;
 use namespace::clean;
@@ -1112,7 +1113,7 @@ sub get_type ($value) {
 
 # lifted from JSON::MaybeXS
 sub is_bool ($value) {
-  Scalar::Util::blessed($value)
+  blessed($value)
     and ($value->isa('JSON::PP::Boolean')
       or $value->isa('Cpanel::JSON::XS::Boolean')
       or $value->isa('JSON::XS::Boolean'));
