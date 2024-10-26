@@ -181,7 +181,7 @@ sub _eval_subschema ($data, $schema, $state) {
     qw(allOf anyOf oneOf not if),
     !$spec_version || $spec_version ne 'draft7' ? 'dependentSchemas' : (),
     !$spec_version || $spec_version eq 'draft7' ? 'dependencies' : (),
-    !$spec_version || $spec_version !~ qr/^draft(7|2019-09)$/ ? 'prefixItems' : (),
+    !$spec_version || $spec_version !~ qr/^draft(?:7|2019-09)$/ ? 'prefixItems' : (),
     'items',
     !$spec_version || $spec_version =~ qr/^draft(?:7|2019-09)$/ ? 'additionalItems' : (),
     qw(contains properties patternProperties additionalProperties propertyNames),
@@ -262,7 +262,7 @@ sub _eval_keyword_ref ($data, $schema, $state) {
 
   my $uri = Mojo::URL->new($schema->{$state->{keyword}})->to_abs($state->{initial_schema_uri});
   abort($state, '%ss to anchors are not supported', $state->{keyword})
-    if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
+    if ($uri->fragment//'') !~ m{^(?:/(?:[^~]|~[01])*)?$};
 
   # the base of the $ref uri must be the same as the base of the root schema
   # unfortunately this means that many uses of $ref won't work, because we don't
@@ -287,7 +287,7 @@ sub _eval_keyword_recursiveRef ($data, $schema, $state) {
 
   my $uri = Mojo::URL->new($schema->{'$recursiveRef'})->to_abs($state->{initial_schema_uri});
   abort($state, '$recursiveRefs to anchors are not supported')
-    if ($uri->fragment//'') !~ m{^(/(?:[^~]|~[01])*|)$};
+    if ($uri->fragment//'') !~ m{^(?:/(?:[^~]|~[01])*)?$};
 
   # the base of the $recursiveRef uri must be the same as the base of the root schema.
   # unfortunately this means that nearly all usecases of $recursiveRef won't work, because we don't
