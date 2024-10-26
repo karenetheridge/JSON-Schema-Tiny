@@ -173,7 +173,8 @@ sub _eval_subschema ($data, $schema, $state) {
     '$ref',
     !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveRef' : (),
     !$spec_version || $spec_version eq 'draft2020-12' ? '$dynamicRef' : (),
-    !$spec_version || $spec_version ne 'draft7' ? qw($vocabulary $comment) : (),
+    !$spec_version || $spec_version ne 'draft7' ? '$vocabulary' : (),
+    '$comment',
     !$spec_version || $spec_version eq 'draft7' ? 'definitions' : (),
     !$spec_version || $spec_version ne 'draft7' ? '$defs' : (),
     # APPLICATOR KEYWORDS
