@@ -1095,10 +1095,10 @@ sub is_type ($type, $value) {
 }
 
 sub get_type ($value) {
-  return 'null' if not defined $value;
   return 'object' if is_plain_hashref($value);
-  return 'array' if is_plain_arrayref($value);
   return 'boolean' if is_bool($value);
+  return 'null' if not defined $value;
+  return 'array' if is_plain_arrayref($value);
 
   return is_bignum($value) ? ($value->is_int ? 'integer' : 'number')
       : (blessed($value) ? '' : 'reference to ').ref($value)
