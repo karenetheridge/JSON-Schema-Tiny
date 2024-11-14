@@ -1054,6 +1054,9 @@ sub _eval_keyword_unevaluatedProperties ($data, $schema, $state) {
 
 # UTILITIES
 
+# supports the six core types, plus integer (which is also a number)
+# we do NOT check $STRINGY_NUMBERS here -- you must do that in the caller
+# copied from JSON::Schema::Modern::Utilities::is_type
 sub is_type ($type, $value) {
   if ($type eq 'null') {
     return !(defined $value);
@@ -1094,6 +1097,9 @@ sub is_type ($type, $value) {
   return ref($value) eq $type;
 }
 
+# returns one of the six core types, plus integer
+# we do NOT check $STRINGY_NUMBERS here -- you must do that in the caller
+# copied from JSON::Schema::Modern::Utilities::get_type
 sub get_type ($value) {
   return 'object' if is_plain_hashref($value);
   return 'boolean' if is_bool($value);
@@ -1134,7 +1140,11 @@ sub is_bignum ($value) {
 
 # compares two arbitrary data payloads for equality, as per
 # https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.4.2.2
-# if provided with a state hashref, any differences are recorded within
+# $state hashref supports the following fields/configs:
+# - path: location of the first difference
+# - $SCALARREF_BOOLEANS: treats \0 and \1 as boolean values
+# - $STRINGY_NUMBERS: strings will be typed as numbers if looks_like_number() is true
+# copied from JSON::Schema::Modern::Utilities::is_equal
 sub is_equal ($x, $y, $state = {}) {
   $state->{path} //= '';
 
@@ -1182,6 +1192,10 @@ sub is_equal ($x, $y, $state = {}) {
 
 # checks array elements for uniqueness. short-circuits on first pair of matching elements
 # if second arrayref is provided, it is populated with the indices of identical items
+# supports the following configs:
+# - $SCALARREF_BOOLEANS: treats \0 and \1 as boolean values
+# - $STRINGY_NUMBERS: strings will be typed as numbers if looks_like_number() is true
+# copied from JSON::Schema::Modern::Utilities::is_elements_unique
 sub is_elements_unique ($array, $equal_indices = undef) {
   foreach my $idx0 (0..$array->$#*-1) {
     foreach my $idx1 ($idx0+1..$array->$#*) {
@@ -1203,6 +1217,7 @@ sub jsonp {
 }
 
 # shorthand for finding the canonical uri of the present schema location
+# copied from JSON::Schema::Modern::Utilities::canonical_uri
 sub canonical_uri ($state, @extra_path) {
   return $state->{initial_schema_uri} if not @extra_path and not length($state->{schema_path});
   my $uri = $state->{initial_schema_uri}->clone;
@@ -1213,6 +1228,7 @@ sub canonical_uri ($state, @extra_path) {
 }
 
 # shorthand for creating error objects
+# based on JSON::Schema::Modern::Utilities::E
 sub E ($state, $error_string, @args) {
   # sometimes the keyword shouldn't be at the very end of the schema path
   my $sps = delete $state->{_schema_path_suffix};
@@ -1259,6 +1275,7 @@ sub assert_pattern ($state, $pattern) {
   return 1;
 }
 
+# based on JSON::Schema::Modern::Utilities::assert_uri_reference
 sub assert_uri_reference ($state, $schema) {
   my $ref = $schema->{$state->{keyword}};
 
@@ -1274,6 +1291,7 @@ sub assert_uri_reference ($state, $schema) {
   return 1;
 }
 
+# based on JSON::Schema::Modern::Utilities::assert_uri
 sub assert_uri ($state, $schema, $override = undef) {
   my $string = $override // $schema->{$state->{keyword}};
   my $uri = Mojo::URL->new($string);
@@ -1304,6 +1322,7 @@ sub assert_array_schemas ($schema, $state) {
   return 1;
 }
 
+# copied from JSON::Schema::Modern::Utilities::sprintf_num
 sub sprintf_num ($value) {
   # use original value as stored in the NV, without losing precision
   is_bignum($value) ? $value->bstr : sprintf('%s', $value);
