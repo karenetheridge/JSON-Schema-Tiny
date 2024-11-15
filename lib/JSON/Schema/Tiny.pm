@@ -1114,8 +1114,15 @@ sub get_type ($value) {
 }
 
 # lifted from JSON::MaybeXS
+# note: unlike builtin::compat on older perls, we do not accept
+# dualvar(0,"") or dualvar(1,"1") because JSON::PP and Cpanel::JSON::XS
+# do not encode these as booleans.
+use constant HAVE_BUILTIN => $] ge '5.036';
+use if HAVE_BUILTIN, experimental => 'builtin';
 sub is_bool ($value) {
-  blessed($value)
+  HAVE_BUILTIN and builtin::is_bool($value)
+  or
+  !!blessed($value)
     and ($value->isa('JSON::PP::Boolean')
       or $value->isa('Cpanel::JSON::XS::Boolean')
       or $value->isa('JSON::XS::Boolean'));
