@@ -455,13 +455,12 @@ sub _eval_keyword_enum ($data, $schema, $state) {
 
   return E($state, 'value does not match'
     .(!(grep $_->{path}, @s) ? ''
-      : ' (differences start '.join(', ', map 'from item #'.$_.' at "'.$s[$_]->{path}.'"', 0..$#s).')'));
+      : ' ('.join('; ', map "from enum $_ at '$s[$_]->{path}': $s[$_]->{error}", 0..$#s).')'));
 }
 
 sub _eval_keyword_const ($data, $schema, $state) {
   return 1 if is_equal($data, $schema->{const}, my $s = {});
-  return E($state, 'value does not match'
-    .($s->{path} ? ' (differences start at "'.$s->{path}.'")' : ''));
+  return E($state, 'value does not match'.($s->{path} ? " (at '$s->{path}': $s->{error})" : ''));
 }
 
 sub _eval_keyword_multipleOf ($data, $schema, $state) {
@@ -1142,6 +1141,7 @@ sub is_bignum ($value) {
 # https://json-schema.org/draft/2020-12/json-schema-core.html#rfc.section.4.2.2
 # $state hashref supports the following fields/configs:
 # - path: location of the first difference
+# - error: description of the difference
 # - $SCALARREF_BOOLEANS: treats \0 and \1 as boolean values
 # - $STRINGY_NUMBERS: strings will be typed as numbers if looks_like_number() is true
 # copied from JSON::Schema::Modern::Utilities::is_equal
@@ -1149,6 +1149,9 @@ sub is_equal ($x, $y, $state = {}) {
   $state->{path} //= '';
 
   my @types = map get_type($_), $x, $y;
+
+  $state->{error} = 'ambiguous type encountered', return 0
+    if grep $types[$_] eq 'ambiguous type', 0..1;
 
   if ($SCALARREF_BOOLEANS) {
     ($x, $types[0]) = (0+!!$$x, 'boolean') if $types[0] eq 'reference to SCALAR';
@@ -1158,19 +1161,29 @@ sub is_equal ($x, $y, $state = {}) {
   if ($STRINGY_NUMBERS) {
     ($x, $types[0]) = (0+$x, int(0+$x) == $x ? 'integer' : 'number')
       if $types[0] eq 'string' and looks_like_number($x);
+
     ($y, $types[1]) = (0+$y, int(0+$y) == $y ? 'integer' : 'number')
       if $types[1] eq 'string' and looks_like_number($y);
   }
 
-  return 0 if $types[0] ne $types[1];
+  $state->{error} = "wrong type: $types[0] vs $types[1]", return 0 if $types[0] ne $types[1];
   return 1 if $types[0] eq 'null';
-  return $x eq $y if $types[0] eq 'string';
-  return $x == $y if grep $types[0] eq $_, qw(boolean number integer);
+  ($x eq $y and return 1), $state->{error} = 'strings not equal', return 0
+    if $types[0] eq 'string';
+  ($x == $y and return 1), $state->{error} = "$types[0]s not equal", return 0
+    if grep $types[0] eq $_, qw(boolean number integer);
 
   my $path = $state->{path};
   if ($types[0] eq 'object') {
-    return 0 if keys %$x != keys %$y;
-    return 0 if not is_equal([ sort keys %$x ], [ sort keys %$y ]);
+    $state->{error} = 'property count differs: '.keys(%$x).' vs '.keys(%$y), return 0
+      if keys %$x != keys %$y;
+
+    if (not is_equal(my $arr_x = [ sort keys %$x ], my $arr_y = [ sort keys %$y ], my $s={})) {
+      my $pos = substr($s->{path}, 1);
+      $state->{error} = 'property names differ starting at position '.$pos.' ("'.$arr_x->[$pos].'" vs "'.$arr_y->[$pos].'")';
+      return 0;
+    }
+
     foreach my $property (sort keys %$x) {
       $state->{path} = jsonp($path, $property);
       return 0 if not is_equal($x->{$property}, $y->{$property}, $state);
@@ -1179,15 +1192,15 @@ sub is_equal ($x, $y, $state = {}) {
   }
 
   if ($types[0] eq 'array') {
-    return 0 if @$x != @$y;
-    foreach my $idx (0..$x->$#*) {
+    $state->{error} = 'element count differs: '.@$x.' vs '.@$y, return 0 if @$x != @$y;
+    foreach my $idx (0 .. $x->$#*) {
       $state->{path} = $path.'/'.$idx;
       return 0 if not is_equal($x->[$idx], $y->[$idx], $state);
     }
     return 1;
   }
 
-  return 0; # should never get here
+  $state->{error} = 'uh oh', return 0; # should never get here
 }
 
 # checks array elements for uniqueness. short-circuits on first pair of matching elements
