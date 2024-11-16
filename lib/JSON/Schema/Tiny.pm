@@ -791,34 +791,6 @@ sub _eval_keyword_dependencies ($data, $schema, $state) {
   return E($state, 'not all dependencies are satisfied');
 }
 
-# drafts 4, 6, 7, 2019-09:
-# prefixItems: ignored
-# items - array-based  - start at 0; set $state->{_last_items_index} to last evaluated (not successfully).
-# items - schema-based - start at 0; set $state->{_last_items_index} to last data item.
-#                        booleans NOT accepted in draft4.
-# additionalItems - schema-based. consume $state->{_last_items_index} as starting point.
-#                                 booleans accepted in all versions.
-
-# draft2020-12:
-# prefixItems - array-based - start at 0; set $state->{_last_items_index} to last evaluated (not successfully).
-# items - array-based: error
-# items - schema-based - consume $state->{_last_items_index} as starting point.
-# additionalItems - ignored
-
-# no $SPECIFICATION_VERSION specified:
-# prefixItems - array-based - set $state->{_last_items_index} to last evaluated (not successfully).
-# items - array-based  -  starting index is always 0
-#                             set $state->{_last_items_index} to last evaluated (not successfully).
-# items - schema-based -  consume $state->{_last_items_index} as starting point
-#                             set $state->{_last_items_index} to last data item.
-#                                  booleans accepted.
-# additionalItems - schema-based. consume $state->{_last_items_index} as starting point.
-#                                 booleans accepted.
-
-# prefixItems + items(array-based): items will generate an error
-# prefixItems + additionalItems: additionalItems will be ignored
-# items(schema-based) + additionalItems: additionalItems does nothing.
-
 sub _eval_keyword_prefixItems ($data, $schema, $state) {
   return if not assert_array_schemas($schema, $state);
   goto \&_eval_keyword__items_array_schemas;
