@@ -17,6 +17,10 @@ use JSON::Schema::Tiny ();
 use lib 't/lib';
 use Helper;
 
+sub is_type { goto &JSON::Schema::Tiny::is_type }
+sub get_type { goto &JSON::Schema::Tiny::get_type }
+sub is_equal { goto &JSON::Schema::Tiny::is_equal }
+
 subtest 'equality, using inflated data' => sub {
   foreach my $test (
     [ undef, undef, true ],
@@ -50,14 +54,14 @@ subtest 'equality, using inflated data' => sub {
       { a => { b => 1, c => 2 }, d => { e => 3, f => 5 } }, false, '/d/f' ],
   ) {
     my ($x, $y, $expected, $diff_path) = @$test;
-    my @types = map JSON::Schema::Tiny::get_type($_), $x, $y;
-    my $result = JSON::Schema::Tiny::is_equal($x, $y, my $state = {});
+    my @types = map get_type($_), $x, $y;
+    my $result = is_equal($x, $y, my $state = {});
 
     ok(!($result xor $expected), json_sprintf('%s == %s is %s', $x, $y, $expected));
     is($state->{path}, $diff_path // '', 'two instances differ at the expected place') if not $expected;
 
-    ok(JSON::Schema::Tiny::is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
-    ok(JSON::Schema::Tiny::is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
+    ok(is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
+    ok(is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
 
     note '';
   }
@@ -86,13 +90,13 @@ subtest 'equality, using JSON strings' => sub {
     my ($x, $y, $expected, $diff_path) = @$test;
     ($x, $y) = map $decoder->decode($_), $x, $y;
 
-    my @types = map JSON::Schema::Tiny::get_type($_), $x, $y;
-    my $result = JSON::Schema::Tiny::is_equal($x, $y, my $state = {});
+    my @types = map get_type($_), $x, $y;
+    my $result = is_equal($x, $y, my $state = {});
     ok(!($result xor $expected), json_sprintf('%s == %s is %s', $x, $y, $expected));
     is($state->{path}, $diff_path // '', 'two instances differ at the expected place') if not $expected;
 
-    ok(JSON::Schema::Tiny::is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
-    ok(JSON::Schema::Tiny::is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
+    ok(is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
+    ok(is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
 
     note '';
   }
@@ -110,14 +114,14 @@ subtest 'equality, using scalarref booleans' => sub {
     [ undef, false, false ],
   ) {
     my ($x, $y, $expected, $diff_path) = @$test;
-    my @types = map JSON::Schema::Tiny::get_type($_), $x, $y;
-    my $result = JSON::Schema::Tiny::is_equal($x, $y, my $state = {});
+    my @types = map get_type($_), $x, $y;
+    my $result = is_equal($x, $y, my $state = {});
 
     ok(!($result xor $expected), json_sprintf('%s == %s is %s', $x, $y, $expected));
     is($state->{path}, $diff_path // '', 'two instances differ at the expected place') if not $expected;
 
-    ok(JSON::Schema::Tiny::is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
-    ok(JSON::Schema::Tiny::is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
+    ok(is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
+    ok(is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
 
     note '';
   }
@@ -139,14 +143,14 @@ subtest 'equality, using stringy numbers' => sub {
     [ 'x', 'y', false ],
   ) {
     my ($x, $y, $expected, $diff_path) = @$test;
-    my @types = map JSON::Schema::Tiny::get_type($_), $x, $y;
-    my $result = JSON::Schema::Tiny::is_equal($x, $y, my $state = {});
+    my @types = map get_type($_), $x, $y;
+    my $result = is_equal($x, $y, my $state = {});
 
     ok(!($result xor $expected), json_sprintf('%s == %s is %s', $x, $y, $expected));
     is($state->{path}, $diff_path // '', 'two instances differ at the expected place') if not $expected;
 
-    ok(JSON::Schema::Tiny::is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
-    ok(JSON::Schema::Tiny::is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
+    ok(is_type($types[0], $x), 'type of arg 0 was not mutated while making equality check');
+    ok(is_type($types[1], $y), 'type of arg 1 was not mutated while making equality check');
 
     note '';
   }

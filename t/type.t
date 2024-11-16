@@ -21,6 +21,9 @@ use Math::BigFloat;
 use lib 't/lib';
 use Helper;
 
+sub is_type { goto &JSON::Schema::Tiny::is_type }
+sub get_type { goto &JSON::Schema::Tiny::get_type }
+
 my %inflated_data = (
   null => [ undef ],
   boolean => [ false, true ],
@@ -46,16 +49,16 @@ foreach my $type (sort keys %inflated_data) {
   subtest 'inflated data, type: '.$type => sub {
     foreach my $value ($inflated_data{$type}->@*) {
       my $value_copy = $value;
-      ok(JSON::Schema::Tiny::is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
-      ok(JSON::Schema::Tiny::is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
+      ok(is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
+      ok(is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
         if $type eq 'integer';
-      is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
+      is(get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
 
       foreach my $other_type (sort keys %inflated_data) {
         next if $other_type eq $type;
         next if $type eq 'integer' and $other_type eq 'number';
 
-        ok(!JSON::Schema::Tiny::is_type($other_type, $value),
+        ok(!is_type($other_type, $value),
           json_sprintf('is_type("'.$other_type.'", %s) is false', $value));
       }
 
@@ -64,23 +67,27 @@ foreach my $type (sort keys %inflated_data) {
   };
 }
 
-my $decoder = (Mojo::JSON::JSON_XS ? 'Cpanel::JSON::XS' : 'JSON::PP')->new->allow_nonref(1)->canonical(1)->utf8(1)->allow_bignum(1);
+my $decoder = (Mojo::JSON::JSON_XS ? 'Cpanel::JSON::XS' : 'JSON::PP')->new
+  ->allow_nonref(1)
+  ->canonical(1)
+  ->utf8(1)
+  ->allow_bignum(1);
 
 foreach my $type (sort keys %json_data) {
   subtest 'JSON-encoded data, type: '.$type => sub {
     foreach my $value ($json_data{$type}->@*) {
       $value = $decoder->decode($value);
       my $value_copy = $value;
-      ok(JSON::Schema::Tiny::is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
-      ok(JSON::Schema::Tiny::is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
+      ok(is_type($type, $value), json_sprintf(('is_type("'.$type.'", %s) is true'), $value_copy ));
+      ok(is_type('number', $value), json_sprintf(('is_type("number", %s) is true'), $value_copy ))
         if $type eq 'integer';
-      is(JSON::Schema::Tiny::get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
+      is(get_type($value), $type, json_sprintf(('get_type(%s) = '.$type), $value_copy));
 
       foreach my $other_type (sort keys %json_data) {
         next if $other_type eq $type;
         next if $type eq 'integer' and $other_type eq 'number';
 
-        ok(!JSON::Schema::Tiny::is_type($other_type, $value),
+        ok(!is_type($other_type, $value),
           json_sprintf('is_type("'.$other_type.'", %s) is false', $value));
       }
 
@@ -90,19 +97,19 @@ foreach my $type (sort keys %json_data) {
 }
 
 subtest 'type: integer' => sub {
-  ok(JSON::Schema::Tiny::is_type('integer', $_), json_sprintf('%s is an integer', $_))
+  ok(is_type('integer', $_), json_sprintf('%s is an integer', $_))
     foreach (1, 2.0, 9223372036854775800000008, $decoder->decode('9223372036854775800000008'));
 
-  ok(!JSON::Schema::Tiny::is_type('integer', $_), json_sprintf('%s is not an integer', $_))
+  ok(!is_type('integer', $_), json_sprintf('%s is not an integer', $_))
     foreach ('1', '2.0', 3.1, '4.2');
 };
 
-ok(!JSON::Schema::Tiny::is_type('foo', 'wharbarbl'), 'non-existent type does not result in exception');
+ok(!is_type('foo', 'wharbarbl'), 'non-existent type does not result in exception');
 
 my $file = __FILE__;
 my $line;
 like(
-  exception { $line = __LINE__; JSON::Schema::Tiny::get_type(dualvar(5, "five")) },
+  exception { $line = __LINE__; get_type(dualvar(5, "five")) },
   qr/^ambiguous type for "five" at $file line $line/,
   'ambiguous type results in exception',
 );
@@ -119,10 +126,10 @@ subtest 'is_type and get_type for references' => sub {
     [ *STDIN{IO}, 'IO::File' ],
     [ bless({}, 'Foo'), 'Foo' ],
   ) {
-    is(JSON::Schema::Tiny::get_type($test->[0]), $test->[1], $test->[1].' type is reported without exception');
-    ok(JSON::Schema::Tiny::is_type($test->[1], $test->[0]), 'value is a '.$test->[1]);
+    is(get_type($test->[0]), $test->[1], $test->[1].' type is reported without exception');
+    ok(is_type($test->[1], $test->[0]), 'value is a '.$test->[1]);
     foreach my $type (qw(null object array boolean string number integer)) {
-      ok(!JSON::Schema::Tiny::is_type($type, $test->[0]), 'value is not a '.$type);
+      ok(!is_type($type, $test->[0]), 'value is not a '.$type);
     }
   }
 };
