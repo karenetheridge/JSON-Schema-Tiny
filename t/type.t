@@ -30,17 +30,19 @@ my %inflated_data = (
   object => [ {}, { a => 1 } ],
   array => [ [], [ 1 ] ],
   number => [ 3.1, 1.23456789012e10, Math::BigFloat->new('0.123') ],
-  integer => [ 0, -1, 2, 2.0, 2**31-1, 2**31, 2**63-1, 2**63, 2**64, 2**65, 1000000000000000, Math::BigInt->new('1e20') ],
+  integer => [ 0, -1, 2, 2.0, 2**31-1, 2**31, 2**63-1, 2**63, 2**64, 2**65, 1000000000000000,
+    Math::BigInt->new('1e20'), Math::BigInt->new('1'), Math::BigInt->new('1.0'),
+    Math::BigFloat->new('2e1'), Math::BigFloat->new('1'), Math::BigFloat->new('1.0') ],
   string => [ '', '0', '-1', '2', '2.0', '3.1', 'école', 'ಠ_ಠ' ],
 );
 
 my %json_data = (
-  null => [ 'null'],
+  null => [ 'null' ],
   boolean => [ 'false', 'true' ],
   object => [ '{}', '{"a":1}' ],
   array => [ '[]', '[1]' ],
   number => [ '3.1', '1.23456789012e10' ],
-  integer => [ '0', '-1', '2.0', (map $_.'', 2**31-1, 2**31, 2**63-1, 2**63, 2**64, 2**65), '1000000000000000' ],
+  integer => [ '0', '-1', '2.0', (map $_.'', 2**31-1, 2**31, 2**63-1, 2**63, 2**64, 2**65), '1000000000000000', '2e1' ],
   string => [ '""', '"0"', '"-1"', '"2.0"', '"3.1"',
     qq{"\x{c3}\x{a9}cole"}, qq{"\x{e0}\x{b2}\x{a0}_\x{e0}\x{b2}\x{a0}"} ],
 );
@@ -96,23 +98,105 @@ foreach my $type (sort keys %json_data) {
   };
 }
 
-subtest 'type: integer' => sub {
-  ok(is_type('integer', $_), json_sprintf('%s is an integer', $_))
-    foreach (1, 2.0, 9223372036854775800000008, $decoder->decode('9223372036854775800000008'));
-
-  ok(!is_type('integer', $_), json_sprintf('%s is not an integer', $_))
-    foreach ('1', '2.0', 3.1, '4.2');
-};
-
 ok(!is_type('foo', 'wharbarbl'), 'non-existent type does not result in exception');
 
-my $file = __FILE__;
-my $line;
-like(
-  exception { $line = __LINE__; get_type(dualvar(5, "five")) },
-  qr/^ambiguous type for "five" at $file line $line/,
-  'ambiguous type results in exception',
-);
+subtest 'ambiguous types' => sub {
+  subtest 'integers' => sub {
+    my $integer = dualvar(5, 'five');
+    is(get_type($integer), 'ambiguous type', 'dualvar integers with different values are ambiguous');
+    ok(!is_type($_, $integer), "dualvar integers with different values are not ${_}s") foreach qw(integer number string);
+
+    $integer = 5;
+    ()= sprintf('%s', $integer);
+
+    # legacy behaviour (this only happens for IVs, not NVs)
+    SKIP: {
+      skip 'on perls < 5.35.9, reading the string form of an integer value sets the flag SVf_POK', 1
+        if "$]" >= 5.035009;
+
+      is(get_type($integer), 'string', 'older perls only: integer that is later used as a string is now identified as a string');
+      ok(is_type('integer', $integer), 'integer that is later used as a string is still an integer');
+      ok(is_type('number', $integer), 'integer that is later used as a string is still a number');
+      ok(is_type('string', $integer), 'older perls only: integer that is later used as a string is now a string');
+    }
+
+    # modern behaviour
+    SKIP: {
+      skip 'on perls < 5.35.9, reading the string form of an integer value sets the flag SVf_POK', 1
+        if "$]" < 5.035009;
+
+      is(get_type($integer), 'integer', 'integer that is later used as a string is still identified as a integer');
+      ok(is_type('integer', $integer), 'integer that is later used as a string is still an integer');
+      ok(is_type('number', $integer), 'integer that is later used as a string is still a number');
+      ok(!is_type('string', $integer), 'integer that is later used as a string is not a string');
+    }
+  };
+
+  subtest 'numbers' => sub {
+    my $number = dualvar(5.1, 'five');
+    is(get_type($number), 'ambiguous type', 'dualvar numbers are ambiguous in get_type');
+    ok(!is_type($_, $number), "dualvar numbers are not ${_}s") foreach qw(integer number string);
+
+    $number = 5.1;
+    ()= sprintf('%s', $number);
+
+    is(get_type($number), 'number', 'number that is later used as a string is still identified as a number');
+    ok(!is_type('integer', $number), 'number that is later used as a string is not an integer');
+    ok(is_type('number', $number), 'number that is later used as a string is still a number');
+    ok(!is_type('string', $number), 'number that is later used as a string is not a string');
+  };
+
+  subtest 'strings' => sub {
+    my $string = dualvar(5.1, 'five');
+    is(get_type($string), 'ambiguous type', 'dualvar strings are ambiguous in get_type');
+    ok(!is_type($_, $string), "dualvar strings are not ${_}s") foreach qw(integer number string);
+
+    $string = '5';
+    ()= 0+$string;
+
+    is(get_type($string), 'string', 'string that is later used as an integer is still identified as a string');
+
+    # legacy behaviour
+    SKIP: {
+      skip 'on perls < 5.35.9, reading the string form of an integer value sets the flag SVf_POK', 1
+        if "$]" >= 5.035009;
+      ok(is_type('integer', $string), 'older perls only: string that is later used as an integer becomes an integer');
+      ok(is_type('number', $string), 'older perls only: string that is later used as an integer becomes a number');
+    }
+
+    # modern behaviour
+    SKIP: {
+      skip 'on perls < 5.35.9, reading the integer form of a string value sets the flag SVf_IOK', 1
+        if "$]" < 5.035009;
+      ok(!is_type('integer', $string), 'string that is later used as an integer is not an integer');
+      ok(!is_type('number', $string), 'string that is later used as an integer is not a number');
+    }
+
+    ok(is_type('string', $string), 'string that is later used as an integer is still a string');
+
+    $string = '5.1';
+    ()= 0+$string;
+
+    is(get_type($string), 'string', 'string that is later used as a number is still identified as a string');
+    ok(!is_type('integer', $string), 'string that is later used as a number is not an integer');
+
+    # legacy behaviour
+    SKIP: {
+      skip 'on perls < 5.35.9, reading the string form of an integer value sets the flag SVf_POK', 1
+        if "$]" >= 5.035009;
+      ok(is_type('number', $string), 'older perls only: string that is later used as a number becomes a number');
+    }
+
+    # modern behaviour
+    SKIP: {
+      skip 'on perls < 5.35.9, reading the numeric form of a string value sets the flag SVf_NOK', 1
+        if "$]" < 5.035009;
+      ok(!is_type('number', $string), 'string that is later used as a number is not a number');
+    }
+
+    ok(is_type('string', $string), 'string that is later used as a number is still a string');
+  };
+};
 
 subtest 'is_type and get_type for references' => sub {
   foreach my $test (
@@ -125,6 +209,7 @@ subtest 'is_type and get_type for references' => sub {
     [ qr/foo/, 'Regexp' ],
     [ *STDIN{IO}, 'IO::File' ],
     [ bless({}, 'Foo'), 'Foo' ],
+    [ bless({}, '0'), '0' ],
   ) {
     is(get_type($test->[0]), $test->[1], $test->[1].' type is reported without exception');
     ok(is_type($test->[1], $test->[0]), 'value is a '.$test->[1]);

@@ -26,7 +26,7 @@ use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 qw(any none);
 use Scalar::Util 'looks_like_number';
-use builtin::compat 'blessed';
+use builtin::compat qw(blessed created_as_number created_as_string);
 use if "$]" >= 5.022, POSIX => 'isinf';
 use Math::BigFloat;
 use namespace::clean;
@@ -1055,6 +1055,8 @@ sub _eval_keyword_unevaluatedProperties ($data, $schema, $state) {
 
 # supports the six core types, plus integer (which is also a number)
 # we do NOT check $STRINGY_NUMBERS here -- you must do that in the caller
+# note that sometimes a value may return true for more than one type, e.g. integer+number,
+# or number+string, depending on its internal flags.
 # copied from JSON::Schema::Modern::Utilities::is_type
 sub is_type ($type, $value) {
   if ($type eq 'null') {
@@ -1074,18 +1076,30 @@ sub is_type ($type, $value) {
     return 0 if not defined $value;
     my $flags = B::svref_2object(\$value)->FLAGS;
 
+    # dualvars with the same string and (stringified) numeric value could be either a string or a
+    # number, and before 5.36 we can't tell the difference, so we will answer yes for both.
+    # in 5.36+, stringified numbers still get a PV but don't have POK set, whereas
+    # numified strings do have POK set, so we can tell which one came first.
+
     if ($type eq 'string') {
-      return !is_ref($value) && $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
+      # like created_as_string, but rejects dualvars with stringwise-unequal string and numeric parts
+      return !is_ref($value)
+        && $flags & B::SVf_POK
+        && (!($flags & (B::SVf_IOK | B::SVf_NOK))
+          || do { no warnings 'numeric'; 0+$value eq $value });
     }
 
     if ($type eq 'number') {
-      return is_bignum($value)
-        || !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
+      # floats in json will always be parsed into Math::BigFloat, when allow_bignum is enabled
+      return is_bignum($value) || created_as_number($value);
     }
 
     if ($type eq 'integer') {
+      # note: values that are larger than $Config{ivsize} will be represented as an NV, not IV,
+      # therefore they will fail this check
       return is_bignum($value) && $value->is_int
-        || !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK)) && int($value) == $value;
+        # if dualvar, PV and stringified NV/IV must be identical
+        || created_as_number($value) && int($value) == $value;
     }
   }
 
@@ -1105,17 +1119,34 @@ sub get_type ($value) {
   return 'null' if not defined $value;
   return 'array' if is_plain_arrayref($value);
 
-  return is_bignum($value) ? ($value->is_int ? 'integer' : 'number')
-      : (blessed($value) ? '' : 'reference to ').ref($value)
-    if is_ref($value);
+  # floats in json will always be parsed into Math::BigFloat, when allow_bignum is enabled
+  if (is_ref($value)) {
+    my $ref = ref($value);
+    return $ref eq 'Math::BigInt' ? 'integer'
+      : $ref eq 'Math::BigFloat' ? ($value->is_int ? 'integer' : 'number')
+      : (defined blessed($value) ? '' : 'reference to ').$ref;
+  }
 
   my $flags = B::svref_2object(\$value)->FLAGS;
-  return 'string' if $flags & B::SVf_POK && !($flags & (B::SVf_IOK | B::SVf_NOK));
-  return int($value) == $value ? 'integer' : 'number'
-    if !($flags & B::SVf_POK) && ($flags & (B::SVf_IOK | B::SVf_NOK));
 
-  croak sprintf('ambiguous type for %s',
-    (Mojo::JSON::JSON_XS ? 'Cpanel::JSON::XS' : 'JSON::PP')->new->allow_nonref(1)->canonical(1)->utf8(0)->encode($value));
+  # dualvars with the same string and (stringified) numeric value could be either a string or a
+  # number, and before 5.36 we can't tell the difference, so we choose number because it has been
+  # evaluated as a number already.
+  # in 5.36+, stringified numbers still get a PV but don't have POK set, whereas
+  # numified strings do have POK set, so we can tell which one came first.
+
+  # like created_as_string, but rejects dualvars with stringwise-unequal string and numeric parts
+  return 'string'
+    if $flags & B::SVf_POK
+      && (!($flags & (B::SVf_IOK | B::SVf_NOK))
+        || do { no warnings 'numeric'; 0+$value eq $value });
+
+  # note: values that are larger than $Config{ivsize} will be represented as an NV, not IV,
+  # therefore they will fail this check
+  return int($value) == $value ? 'integer' : 'number' if created_as_number($value);
+
+  # this might be a scalar with POK|IOK or POK|NOK set
+  return 'ambiguous type';
 }
 
 # lifted from JSON::MaybeXS
@@ -1188,6 +1219,7 @@ sub is_equal ($x, $y, $state = {}) {
       $state->{path} = jsonp($path, $property);
       return 0 if not is_equal($x->{$property}, $y->{$property}, $state);
     }
+
     return 1;
   }
 
