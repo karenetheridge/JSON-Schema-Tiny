@@ -1242,8 +1242,8 @@ sub is_equal ($x, $y, $state = {}) {
 # - $STRINGY_NUMBERS: strings will be typed as numbers if looks_like_number() is true
 # copied from JSON::Schema::Modern::Utilities::is_elements_unique
 sub is_elements_unique ($array, $equal_indices = undef) {
-  foreach my $idx0 (0..$array->$#*-1) {
-    foreach my $idx1 ($idx0+1..$array->$#*) {
+  foreach my $idx0 (0 .. $array->$#*-1) {
+    foreach my $idx1 ($idx0+1 .. $array->$#*) {
       if (is_equal($array->[$idx0], $array->[$idx1])) {
         push @$equal_indices, $idx0, $idx1 if defined $equal_indices;
         return 0;
