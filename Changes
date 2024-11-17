@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - bump builtin::compat prereq for compatibility issues
 
 0.026     2024-11-16 22:05:15Z
           - some performance optimizations for schema traversal and evaluation
