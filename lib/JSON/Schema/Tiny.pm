@@ -1435,7 +1435,7 @@ a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_dep
 =head2 C<$BOOLEAN_RESULT>
 
 When true, L</evaluate> will return a true or false result only, with no error strings. This enables
-short-circuit mode internally as this cannot effect results except get there faster. Defaults to false.
+short-circuit mode internally as this cannot affect results except get there faster. Defaults to false.
 
 =head2 C<$SHORT_CIRCUIT>
 
