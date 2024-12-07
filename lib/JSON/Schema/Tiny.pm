@@ -1374,7 +1374,7 @@ __END__
 
 This module aims to be a slimmed-down L<JSON Schema|https://json-schema.org/> evaluator and
 validator, supporting the most popular keywords.
-(See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
+(See L</UNSUPPORTED JSON SCHEMA FEATURES> below for exclusions.)
 
 =head1 FUNCTIONS
 
@@ -1502,7 +1502,7 @@ Supported values for this option, and the corresponding values for the C<$schema
 
 Defaults to undef.
 
-=head1 UNSUPPORTED JSON-SCHEMA FEATURES
+=head1 UNSUPPORTED JSON SCHEMA FEATURES
 
 Unlike L<JSON::Schema::Modern>, this is not a complete implementation of the JSON Schema
 specification. Some features and keywords are left unsupported in order to keep the code small and
