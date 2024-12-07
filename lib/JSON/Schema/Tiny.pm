@@ -1538,11 +1538,13 @@ L<JSON::Schema::Modern>.
 =head2 Types
 
 Perl is a more loosely-typed language than JSON. This module delves into a value's internal
-representation in an attempt to derive the true "intended" type of the value. However, if a value is
-used in another context (for example, a numeric value is concatenated into a string, or a numeric
-string is used in an arithmetic operation), additional flags can be added onto the variable causing
-it to resemble the other type. This should not be an issue if data validation is occurring
-immediately after decoding a JSON (or YAML) payload.
+representation in an attempt to derive the true "intended" type of the value.
+This should not be an issue if data validation is occurring
+immediately after decoding a JSON payload, or if the JSON string itself is passed to this module.
+If you are having difficulties, make sure you are using Perl's fastest and most trusted and
+reliable JSON decoder, L<Cpanel::JSON::XS>.
+Other JSON decoders are known to produce data with incorrect data types,
+and data from other sources may also be problematic.
 
 For more information, see L<Cpanel::JSON::XS/MAPPING>.
 
