@@ -26,7 +26,7 @@ use Feature::Compat::Try;
 use JSON::PP ();
 use List::Util 1.33 qw(any none);
 use Scalar::Util 'looks_like_number';
-use builtin::compat qw(blessed created_as_number created_as_string);
+use builtin::compat qw(blessed created_as_number);
 use if "$]" >= 5.022, POSIX => 'isinf';
 use Math::BigFloat;
 use namespace::clean;
