@@ -714,6 +714,8 @@ sub _eval_keyword_oneOf ($data, $schema, $state) {
 }
 
 sub _eval_keyword_not ($data, $schema, $state) {
+  return !$schema->{not} || E($state, 'subschema is true') if is_type('boolean', $schema->{not});
+
   return 1 if not _eval_subschema($data, $schema->{not},
     +{ %$state, schema_path => $state->{schema_path}.'/not', short_circuit => 1, errors => [] });
 
@@ -727,6 +729,10 @@ sub _eval_keyword_if ($data, $schema, $state) {
     ? 'then' : 'else';
 
   return 1 if not exists $schema->{$keyword};
+
+  return $schema->{$keyword} || E({ %$state, keyword => $keyword }, 'subschema is false')
+    if is_type('boolean', $schema->{$keyword});
+
   return 1 if _eval_subschema($data, $schema->{$keyword},
     +{ %$state, schema_path => $state->{schema_path}.'/'.$keyword });
   return E({ %$state, keyword => $keyword }, 'subschema is not valid');
