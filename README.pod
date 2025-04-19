@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.028
+version 0.029
 
 =head1 SYNOPSIS
 
@@ -33,13 +33,13 @@ version 0.028
 
 This module aims to be a slimmed-down L<JSON Schema|https://json-schema.org/> evaluator and
 validator, supporting the most popular keywords.
-(See L</UNSUPPORTED JSON-SCHEMA FEATURES> below for exclusions.)
+(See L</UNSUPPORTED JSON SCHEMA FEATURES> below for exclusions.)
 
 =head1 FUNCTIONS
 
 =for Pod::Coverage is_type get_type is_bool is_bignum is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
-new assert_uri_reference sprintf_num
+new assert_uri_reference sprintf_num HAVE_BUILTIN
 
 =head2 evaluate
 
@@ -94,7 +94,7 @@ a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_dep
 =head2 C<$BOOLEAN_RESULT>
 
 When true, L</evaluate> will return a true or false result only, with no error strings. This enables
-short-circuit mode internally as this cannot effect results except get there faster. Defaults to false.
+short-circuit mode internally as this cannot affect results except get there faster. Defaults to false.
 
 =head2 C<$SHORT_CIRCUIT>
 
@@ -194,7 +194,7 @@ L<C<draft7> or C<7>|https://json-schema.org/specification-links.html#draft-7>, c
 
 Defaults to undef.
 
-=head1 UNSUPPORTED JSON-SCHEMA FEATURES
+=head1 UNSUPPORTED JSON SCHEMA FEATURES
 
 Unlike L<JSON::Schema::Modern>, this is not a complete implementation of the JSON Schema
 specification. Some features and keywords are left unsupported in order to keep the code small and
@@ -259,11 +259,13 @@ L<JSON::Schema::Modern>.
 =head2 Types
 
 Perl is a more loosely-typed language than JSON. This module delves into a value's internal
-representation in an attempt to derive the true "intended" type of the value. However, if a value is
-used in another context (for example, a numeric value is concatenated into a string, or a numeric
-string is used in an arithmetic operation), additional flags can be added onto the variable causing
-it to resemble the other type. This should not be an issue if data validation is occurring
-immediately after decoding a JSON (or YAML) payload.
+representation in an attempt to derive the true "intended" type of the value.
+This should not be an issue if data validation is occurring
+immediately after decoding a JSON payload, or if the JSON string itself is passed to this module.
+If you are having difficulties, make sure you are using Perl's fastest and most trusted and
+reliable JSON decoder, L<Cpanel::JSON::XS>.
+Other JSON decoders are known to produce data with incorrect data types,
+and data from other sources may also be problematic.
 
 For more information, see L<Cpanel::JSON::XS/MAPPING>.
 
