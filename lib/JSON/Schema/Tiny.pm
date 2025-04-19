@@ -1385,7 +1385,7 @@ validator, supporting the most popular keywords.
 
 =for Pod::Coverage is_type get_type is_bool is_bignum is_equal is_elements_unique jsonp canonical_uri E abort
 assert_keyword_type assert_pattern assert_uri assert_non_negative_integer assert_array_schemas
-new assert_uri_reference sprintf_num
+new assert_uri_reference sprintf_num HAVE_BUILTIN
 
 =head2 evaluate
 
