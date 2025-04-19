@@ -1300,16 +1300,15 @@ sub assert_pattern ($state, $pattern) {
 
 # based on JSON::Schema::Modern::Utilities::assert_uri_reference
 sub assert_uri_reference ($state, $schema) {
-  my $ref = $schema->{$state->{keyword}};
-
+  my $string = $schema->{$state->{keyword}};
   abort($state, '%s value is not a valid URI reference', $state->{keyword})
     # see also uri-reference format sub
-    if fc(Mojo::URL->new($ref)->to_unsafe_string) ne fc($ref)
-      or $ref =~ /[^[:ascii:]]/
-      or $ref =~ /#/
-        and $ref !~ m{#$}                          # empty fragment
-        and $ref !~ m{#[A-Za-z][A-Za-z0-9_:.-]*$}  # plain-name fragment
-        and $ref !~ m{#/(?:[^~]|~[01])*$};         # json pointer fragment
+    if fc(Mojo::URL->new($string)->to_unsafe_string) ne fc($string)
+      or $string =~ /[^[:ascii:]]/            # ascii characters only
+      or $string =~ /#/                       # no fragment, except...
+        and $string !~ m{#$}                          # allow empty fragment
+        and $string !~ m{#[A-Za-z][A-Za-z0-9_:.-]*$}  # allow plain-name fragment
+        and $string !~ m{#/(?:[^~]|~[01])*$};         # allow json pointer fragment
 
   return 1;
 }
@@ -1322,9 +1321,9 @@ sub assert_uri ($state, $schema, $override = undef) {
   abort($state, '"%s" is not a valid URI', $string)
     # see also uri format sub
     if fc($uri->to_unsafe_string) ne fc($string)
-      or $string =~ /[^[:ascii:]]/
-      or not $uri->is_abs
-      or $string =~ /#/
+      or $string =~ /[^[:ascii:]]/            # ascii characters only
+      or not $uri->is_abs                     # must have a schema
+      or $string =~ /#/                       # no fragment, except...
         and $string !~ m{#$}                          # empty fragment
         and $string !~ m{#[A-Za-z][A-Za-z0-9_:.-]*$}  # plain-name fragment
         and $string !~ m{#/(?:[^~]|~[01])*$};         # json pointer fragment
