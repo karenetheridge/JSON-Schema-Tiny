@@ -1294,7 +1294,7 @@ sub assert_pattern ($state, $pattern) {
     local $SIG{__WARN__} = sub { die @_ };
     qr/$pattern/;
   }
-  catch ($e) { abort($state, $e); };
+  catch ($e) { abort($state, $e); }
   return 1;
 }
 
