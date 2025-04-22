@@ -45,6 +45,9 @@ acceptance_tests(
           optional/content.json
         ) ] },
       { file => 'definitions.json', group_description => [ 'valid definition', 'validate definition against metaschema' ] },
+      # various edge cases that are difficult to accomodate
+      $Config{ivsize} < 8 ? { file => 'multipleOf.json', group_description => 'small multiple of large integer', test_description => 'any integer is a multiple of 1e-8' } : (),
+
       # only same-document, same-base JSON pointers are supported in $ref
       { file => 'ref.json', group_description => [
           '$ref prevents a sibling $id from changing the base uri',
