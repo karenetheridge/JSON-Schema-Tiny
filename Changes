@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.030     2025-04-22 16:44:19Z
           - skip a test of "multipleOf" that fails on ivsize < 8
 
