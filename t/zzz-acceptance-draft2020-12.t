@@ -69,6 +69,7 @@ acceptance_tests(
           '$id must be resolved against nearest parent, not just immediate parent',
           'order of evaluation: $id and $ref',
           'order of evaluation: $id and $anchor and $ref',
+          'order of evaluation: $id and $ref on nested schema',
           'URN base URI with URN and anchor ref',
           'URN ref with nested pointer ref',
           'ref to if',
