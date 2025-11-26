@@ -10,7 +10,7 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.030
+version 0.031
 
 =head1 SYNOPSIS
 
@@ -300,6 +300,14 @@ L<Understanding JSON Schema|https://json-schema.org/understanding-json-schema>: 
 =back
 
 =for stopwords OpenAPI
+
+=head1 GIVING THANKS
+
+=for stopwords MetaCPAN GitHub
+
+If you found this module to be useful, please show your appreciation by
+adding a +1 in L<MetaCPAN|https://metacpan.org/dist/JSON-Schema-Tiny>
+and a star in L<GitHub|https://github.com/karenetheridge/JSON-Schema-Tiny>.
 
 =head1 SUPPORT
 
