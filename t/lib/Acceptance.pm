@@ -14,7 +14,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 
 use lib 't/lib';
 use Helper;
-use Path::Tiny;
+use Mojo::File 'path';
 use if $ENV{AUTHOR_TESTING}, 'Test2::Warnings' => ':fail_on_warning'; # hooks into done_testing unless overridden
 use Test::JSON::Schema::Acceptance 1.026;
 use JSON::Schema::Tiny;
@@ -76,7 +76,7 @@ sub acceptance_tests (%options) {
     ($options{test} // {})->%*,
   );
 
-  path('t/results/'.$options{output_file})->spew_utf8($accepter->results_text)
+  path('t/results/'.$options{output_file})->spew($accepter->results_text, 'UTF-8')
     if $ENV{AUTHOR_TESTING};
 }
 1;

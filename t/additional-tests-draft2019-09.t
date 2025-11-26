@@ -13,7 +13,7 @@ use open ':std', ':encoding(UTF-8)'; # force stdin, stdout, stderr into utf8
 use lib 't/lib';
 use Helper;
 use Acceptance;
-use Path::Tiny;
+use Mojo::File 'path';
 use Mojo::JSON 'decode_json';
 use Test2::Warnings qw(warnings :no_end_test had_no_warnings);
 
@@ -35,7 +35,7 @@ my @warnings = warnings {
         { file => 'keyword-independence.json', group_description => [
           grep /unevaluated/,
           map $_->{description},
-          decode_json(path('t/additional-tests-'.$version.'/keyword-independence.json')->slurp_raw)->@*
+          decode_json(path('t/additional-tests-'.$version.'/keyword-independence.json')->slurp)->@*
         ] },
       ] ),
     },
