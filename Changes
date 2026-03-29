@@ -1,7 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
-          - removed dependency on Path::Tiny
+          - removed dependencies on Path::Tiny and Ref::Util
 
 0.031     2025-11-26 18:07:48Z
           - update test results and exemptions for TJSA 1.034

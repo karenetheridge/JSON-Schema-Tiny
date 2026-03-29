@@ -16,7 +16,6 @@ no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';
 no if "$]" >= 5.033006, feature => 'bareword_filehandles';
 use B;
-use Ref::Util 0.100 qw(is_plain_arrayref is_plain_hashref is_ref is_plain_arrayref);
 use Mojo::URL;
 use Mojo::JSON::Pointer;
 use Carp qw(croak carp);
@@ -93,7 +92,7 @@ sub evaluate {
     $valid = _eval_subschema($data, $schema, $state)
   }
   catch ($e) {
-    if (is_plain_hashref($e)) {
+    if (ref $e eq 'HASH') {
       push $state->{errors}->@*, $e;
     }
     else {
@@ -416,7 +415,7 @@ sub _eval_keyword_defs ($data, $schema, $state) {
 }
 
 sub _eval_keyword_type ($data, $schema, $state) {
-  if (is_plain_arrayref($schema->{type})) {
+  if (ref $schema->{type} eq 'ARRAY') {
     abort($state, 'type array is empty') if not $schema->{type}->@*;
     foreach my $type ($schema->{type}->@*) {
       abort($state, 'unrecognized type "%s"', $type//'<null>')
@@ -803,7 +802,7 @@ sub _eval_keyword_prefixItems ($data, $schema, $state) {
 }
 
 sub _eval_keyword_items ($data, $schema, $state) {
-  if (is_plain_arrayref($schema->{items})) {
+  if (ref $schema->{items} eq 'ARRAY') {
     abort($state, 'array form of "items" not supported in %s', $state->{spec_version})
       if ($state->{spec_version}//'') eq 'draft2020-12';
 
@@ -1044,10 +1043,10 @@ sub is_type ($type, $value) {
     return is_bool($value);
   }
   if ($type eq 'object') {
-    return is_plain_hashref($value);
+    return ref $value eq 'HASH';
   }
   if ($type eq 'array') {
-    return is_plain_arrayref($value);
+    return ref $value eq 'ARRAY';
   }
 
   if ($type eq 'string' or $type eq 'number' or $type eq 'integer') {
@@ -1061,7 +1060,7 @@ sub is_type ($type, $value) {
 
     if ($type eq 'string') {
       # like created_as_string, but rejects dualvars with stringwise-unequal string and numeric parts
-      return !is_ref($value)
+      return !length ref($value)
         && $flags & B::SVf_POK
         && (!($flags & (B::SVf_IOK | B::SVf_NOK))
           || do { no warnings 'numeric'; 0+$value eq $value });
@@ -1092,14 +1091,13 @@ sub is_type ($type, $value) {
 # we do NOT check $STRINGY_NUMBERS here -- you must do that in the caller
 # copied from JSON::Schema::Modern::Utilities::get_type
 sub get_type ($value) {
-  return 'object' if is_plain_hashref($value);
+  return 'object' if ref $value eq 'HASH';
   return 'boolean' if is_bool($value);
   return 'null' if not defined $value;
-  return 'array' if is_plain_arrayref($value);
+  return 'array' if ref $value eq 'ARRAY';
 
   # floats in json will always be parsed into Math::BigFloat, when allow_bignum is enabled
-  if (is_ref($value)) {
-    my $ref = ref($value);
+  if (length(my $ref = ref $value)) {
     return $ref eq 'Math::BigInt' ? 'integer'
       : $ref eq 'Math::BigFloat' ? ($value->is_int ? 'integer' : 'number')
       : (defined blessed($value) ? '' : 'reference to ').$ref;
@@ -1255,7 +1253,7 @@ sub canonical_uri ($state, @extra_path) {
 sub E ($state, $error_string, @args) {
   # sometimes the keyword shouldn't be at the very end of the schema path
   my $sps = delete $state->{_schema_path_suffix};
-  my @schema_path_suffix = defined $sps && is_plain_arrayref($sps) ? $sps->@* : $sps//();
+  my @schema_path_suffix = defined $sps && ref $sps eq 'ARRAY' ? $sps->@* : $sps//();
 
   my $uri = canonical_uri($state, $state->{keyword}, @schema_path_suffix);
 
