@@ -1440,12 +1440,6 @@ a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_dep
 When true, L</evaluate> will return a true or false result only, with no error strings. This enables
 short-circuit mode internally as this cannot affect results except get there faster. Defaults to false.
 
-=head2 C<$SHORT_CIRCUIT>
-
-When true, L</evaluate> will return from evaluating each subschema as soon as a true or false result
-can be determined. When C<$BOOLEAN_RESULT> is false, an incomplete list of errors will be returned.
-Defaults to false.
-
 =head2 C<$MAX_TRAVERSAL_DEPTH>
 
 The maximum number of levels deep a schema traversal may go, before evaluation is halted. This is to
@@ -1457,6 +1451,31 @@ other, or badly-written schemas that could be optimized. Defaults to 50.
 When true, any value that is expected to be a boolean B<in the instance data> may also be expressed as
 the scalar references C<\0> or C<\1> (which are serialized as booleans by JSON backends).
 Defaults to false.
+
+=head2 C<$SHORT_CIRCUIT>
+
+When true, L</evaluate> will return from evaluating each subschema as soon as a true or false result
+can be determined. When C<$BOOLEAN_RESULT> is false, an incomplete list of errors will be returned.
+Defaults to false.
+
+=head2 C<$SPECIFICATION_VERSION>
+
+When set, the version of the draft specification is locked to one particular value, and use of
+keywords inconsistent with that specification version will result in an error. Will be set
+internally automatically with the use of the C<$schema> keyword. When not set, all keywords will be
+honoured (when otherwise supported).
+
+Supported values for this option, and the corresponding values for the C<$schema> keyword, are:
+
+=for :list
+* L<C<draft2020-12> or C<2020-12>|https://json-schema.org/specification-links.html#2020-12>,
+  corresponding to metaschema C<https://json-schema.org/draft/2020-12/schema>
+* L<C<draft2019-09> or C<2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
+  corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>
+* L<C<draft7> or C<7>|https://json-schema.org/specification-links.html#draft-7>,
+  corresponding to metaschema C<http://json-schema.org/draft-07/schema#>
+
+Defaults to undef.
 
 =head2 C<$STRINGY_NUMBERS>
 
@@ -1485,25 +1504,6 @@ This allows you to write a schema like this (which validates a string representi
 Such keywords are only applied if the value looks like a number, and do not generate a failure
 otherwise. Values are determined to be numbers via L<perlapi/looks_like_number>.
 Defaults to false.
-
-=head2 C<$SPECIFICATION_VERSION>
-
-When set, the version of the draft specification is locked to one particular value, and use of
-keywords inconsistent with that specification version will result in an error. Will be set
-internally automatically with the use of the C<$schema> keyword. When not set, all keywords will be
-honoured (when otherwise supported).
-
-Supported values for this option, and the corresponding values for the C<$schema> keyword, are:
-
-=for :list
-* L<C<draft2020-12> or C<2020-12>|https://json-schema.org/specification-links.html#2020-12>,
-  corresponding to metaschema C<https://json-schema.org/draft/2020-12/schema>
-* L<C<draft2019-09> or C<2019-09>|https://json-schema.org/specification-links.html#2019-09-formerly-known-as-draft-8>,
-  corresponding to metaschema C<https://json-schema.org/draft/2019-09/schema>
-* L<C<draft7> or C<7>|https://json-schema.org/specification-links.html#draft-7>,
-  corresponding to metaschema C<http://json-schema.org/draft-07/schema#>
-
-Defaults to undef.
 
 =head1 UNSUPPORTED JSON SCHEMA FEATURES
 
