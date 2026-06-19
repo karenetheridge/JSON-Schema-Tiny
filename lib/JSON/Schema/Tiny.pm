@@ -183,9 +183,9 @@ sub _eval_subschema ($data, $schema, $state) {
     qw(allOf anyOf oneOf not if),
     !$spec_version || $spec_version ne 'draft7' ? 'dependentSchemas' : (),
     !$spec_version || $spec_version eq 'draft7' ? 'dependencies' : (),
-    !$spec_version || $spec_version !~ qr/^draft(?:7|2019-09)$/ ? 'prefixItems' : (),
+    !$spec_version || $spec_version !~ qr/^draft(?:7|2019-09)\z/ ? 'prefixItems' : (),
     'items',
-    !$spec_version || $spec_version =~ qr/^draft(?:7|2019-09)$/ ? 'additionalItems' : (),
+    !$spec_version || $spec_version =~ qr/^draft(?:7|2019-09)\z/ ? 'additionalItems' : (),
     qw(contains properties patternProperties additionalProperties propertyNames),
     # UNEVALUATED KEYWORDS
     !$spec_version || $spec_version ne 'draft7' ? qw(unevaluatedItems unevaluatedProperties) : (),
@@ -329,7 +329,7 @@ sub _eval_keyword_id ($data, $schema, $state) {
         if length($uri->clone->fragment(undef));
 
       abort($state, '$id value does not match required syntax')
-        if $uri->fragment !~ m/^[A-Za-z][A-Za-z0-9_:.-]*$/;
+        if $uri->fragment !~ m/^[A-Za-z][A-Za-z0-9_:.-]*\z/;
 
       return 1;
     }
@@ -353,10 +353,10 @@ sub _eval_keyword_anchor ($data, $schema, $state) {
 
   return 1 if
     (!$state->{spec_version} or $state->{spec_version} eq 'draft2019-09')
-        and ($schema->{'$anchor'}//'') =~ /^[A-Za-z][A-Za-z0-9_:.-]*$/
+        and ($schema->{'$anchor'}//'') =~ /^[A-Za-z][A-Za-z0-9_:.-]*\z/
       or
     (!$state->{spec_version} or $state->{spec_version} eq 'draft2020-12')
-        and ($schema->{'$anchor'}//'') =~ /^[A-Za-z_][A-Za-z0-9._-]*$/;
+        and ($schema->{'$anchor'}//'') =~ /^[A-Za-z_][A-Za-z0-9._-]*\z/;
 
   abort($state, '$anchor value does not match required syntax');
 }
@@ -381,7 +381,7 @@ sub _eval_keyword_dynamicAnchor ($data, $schema, $state) {
   return if not assert_keyword_type($state, $schema, 'string');
 
   abort($state, '$dynamicAnchor value does not match required syntax')
-    if $schema->{'$dynamicAnchor'} !~ /^[A-Za-z_][A-Za-z0-9._-]*$/;
+    if $schema->{'$dynamicAnchor'} !~ /^[A-Za-z_][A-Za-z0-9._-]*\z/;
   return 1;
 }
 
@@ -484,7 +484,7 @@ sub _eval_keyword_multipleOf ($data, $schema, $state) {
   else {
     my $quotient = $data / $schema->{multipleOf};
     return E($state, 'overflow while calculating quotient')
-      if "$]" >= 5.022 ? isinf($quotient) : $quotient =~ /^-?Inf$/i;
+      if "$]" >= 5.022 ? isinf($quotient) : $quotient =~ /^-?Inf\z/i;
     return 1 if int($quotient) == $quotient;
   }
 
@@ -1082,7 +1082,7 @@ sub is_type ($type, $value) {
     }
   }
 
-  if ($type =~ /^reference to (.+)$/) {
+  if ($type =~ /^reference to (.+)\z/) {
     return !blessed($value) && ref($value) eq $1;
   }
 
@@ -1143,7 +1143,7 @@ sub is_bool ($value) {
 }
 
 sub is_bignum ($value) {
-  ref($value) =~ /^Math::Big(?:Int|Float)$/;
+  ref($value) =~ /^Math::Big(?:Int|Float)\z/;
 }
 
 # compares two arbitrary data payloads for equality, as per
