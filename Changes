@@ -1,5 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
+{{$NEXT}}
+
 0.033     2026-06-19 20:26:49Z
           - removed dependencies on strictures, autovivification
 
