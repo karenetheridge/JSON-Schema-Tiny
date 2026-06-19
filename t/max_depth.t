@@ -18,10 +18,11 @@ use lib 't/lib';
 use Helper;
 
 for my $obj (0,1) {
-  local $JSON::Schema::Tiny::MAX_TRAVERSAL_DEPTH = 6 if not $obj;
+  local $JSON::Schema::Tiny::MAX_DEPTH = 6 if not $obj;
 
   no warnings 'redefine';
   local *evaluate = sub {
+    # using deprecated config name, to ensure it keeps working
     JSON::Schema::Tiny->new(max_traversal_depth => 6)->evaluate(@_)
   } if $obj;
 

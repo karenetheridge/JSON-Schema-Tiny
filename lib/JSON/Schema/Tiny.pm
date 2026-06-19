@@ -36,7 +36,8 @@ our @EXPORT_OK = qw(evaluate);
 
 our $BOOLEAN_RESULT = 0;
 our $SHORT_CIRCUIT = 0;
-our $MAX_TRAVERSAL_DEPTH = 50;
+our $MAX_DEPTH = 50;
+our $MAX_TRAVERSAL_DEPTH;  # deprecated!
 our $MOJO_BOOLEANS; # deprecated; renamed to $SCALARREF_BOOLEANS
 our $SCALARREF_BOOLEANS;
 our $STRINGY_NUMBERS;
@@ -58,7 +59,7 @@ sub evaluate {
   $SCALARREF_BOOLEANS = $SCALARREF_BOOLEANS // $MOJO_BOOLEANS;
   local $BOOLEAN_RESULT = $_[0]->{boolean_result} // $BOOLEAN_RESULT,
   local $SHORT_CIRCUIT = $_[0]->{short_circuit} // $SHORT_CIRCUIT,
-  local $MAX_TRAVERSAL_DEPTH = $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH,
+  local $MAX_DEPTH = $_[0]->{max_depth} // $_[0]->{max_traversal_depth} // $MAX_TRAVERSAL_DEPTH // $MAX_DEPTH,
   local $SCALARREF_BOOLEANS = $_[0]->{scalarref_booleans} // $SCALARREF_BOOLEANS // $_[0]->{mojo_booleans},
   local $STRINGY_NUMBERS = $_[0]->{stringy_numbers} // $STRINGY_NUMBERS,
   local $SPECIFICATION_VERSION = $_[0]->{specification_version} // $SPECIFICATION_VERSION,
@@ -142,7 +143,7 @@ sub _eval_subschema ($data, $schema, $state) {
   delete $state->@{'keyword', grep /^_/, keys %$state};
 
   abort($state, 'EXCEPTION: maximum evaluation depth exceeded')
-    if $state->{depth}++ > $MAX_TRAVERSAL_DEPTH;
+    if $state->{depth}++ > $MAX_DEPTH;
 
   my $schema_type = get_type($schema);
   return $schema || E($state, 'subschema is false') if $schema_type eq 'boolean';
@@ -1440,16 +1441,16 @@ failure).
 
 All options are available as package-scoped global variables. Use L<local|perlfunc/local> to
 configure them for a local scope. They may also be set via the constructor, as lower-cased values in
-a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_depth => 10); >>
+a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_depth => 10); >>
 
 =head2 C<$BOOLEAN_RESULT>
 
 When true, L</evaluate> will return a true or false result only, with no error strings. This enables
 short-circuit mode internally as this cannot affect results except get there faster. Defaults to false.
 
-=head2 C<$MAX_TRAVERSAL_DEPTH>
+=head2 C<$MAX_DEPTH>
 
-The maximum number of levels deep a schema traversal may go, before evaluation is halted. This is to
+The maximum number of levels deep a schema descent may go, before evaluation is halted. This is to
 protect against accidental infinite recursion, such as from two subschemas that each reference each
 other, or badly-written schemas that could be optimized. Defaults to 50.
 
