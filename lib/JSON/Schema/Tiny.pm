@@ -19,7 +19,6 @@ use B;
 use Mojo::URL;
 use Mojo::JSON::Pointer;
 use Carp qw(croak carp);
-use Storable 'dclone';
 use Mojo::JSON ();  # for JSON_XS, MOJO_NO_JSON_XS environment variables
 use Feature::Compat::Try;
 use JSON::PP ();
