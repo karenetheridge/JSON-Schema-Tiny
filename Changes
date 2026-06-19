@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - removed dependency on namespace::clean
 
 0.033     2026-06-19 20:26:49Z
           - removed dependencies on strictures, autovivification

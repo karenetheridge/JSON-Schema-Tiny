@@ -30,7 +30,6 @@ use Scalar::Util 'looks_like_number';
 use builtin::compat qw(blessed created_as_number);
 use if "$]" >= 5.022, POSIX => 'isinf';
 use Math::BigFloat;
-use namespace::clean;
 use Exporter 5.57 'import';
 
 our @EXPORT_OK = qw(evaluate);
@@ -1348,6 +1347,12 @@ sub assert_array_schemas ($schema, $state) {
 sub sprintf_num ($value) {
   # use original value as stored in the NV, without losing precision
   is_bignum($value) ? $value->bstr : sprintf('%s', $value);
+}
+
+{
+  # avoid dependency on namespace::clean
+  no strict 'refs';
+  delete @{__PACKAGE__.'::'}{qw(croak carp any looks_like_number isinf)};
 }
 
 1;
