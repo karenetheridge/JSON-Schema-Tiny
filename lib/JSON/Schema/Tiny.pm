@@ -1,5 +1,7 @@
 # vim: set ft=perl ts=8 sts=2 sw=2 tw=100 et :
-use strictures 2;
+use strict;
+use warnings;
+use if $ENV{AUTHOR_TESTING}, strictures => version => 2;
 package JSON::Schema::Tiny;
 # vim: set ts=8 sts=2 sw=2 tw=100 et :
 # ABSTRACT: Validate data against a schema, minimally
@@ -10,7 +12,7 @@ our $VERSION = '0.033';
 use 5.020;  # for unicode_strings, signatures, postderef features
 use stable 0.031 'postderef';
 use experimental 0.026 qw(signatures args_array_with_signatures);
-no autovivification warn => qw(fetch store exists delete);
+use if $ENV{AUTHOR_TESTING}, autovivification => warn => qw(fetch store exists delete);
 use if "$]" >= 5.022, experimental => 're_strict';
 no if "$]" >= 5.031009, feature => 'indirect';
 no if "$]" >= 5.033001, feature => 'multidimensional';

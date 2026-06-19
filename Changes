@@ -1,6 +1,7 @@
 Revision history for JSON-Schema-Tiny
 
 {{$NEXT}}
+          - removed dependencies on strictures, autovivification
 
 0.032     2026-06-19 19:24:46Z
           - removed dependencies on Path::Tiny, Ref::Util and Storable
