@@ -22,7 +22,8 @@ use Carp qw(croak carp);
 use Mojo::JSON ();  # for JSON_XS, MOJO_NO_JSON_XS environment variables
 use Feature::Compat::Try;
 use JSON::PP ();
-use List::Util 1.33 qw(any none);
+use if "$]" < 5.041010, 'List::Util' => 'any';
+use if "$]" >= 5.041010, experimental => 'keyword_any';
 use Scalar::Util 'looks_like_number';
 use builtin::compat qw(blessed created_as_number);
 use if "$]" >= 5.022, POSIX => 'isinf';
@@ -67,7 +68,7 @@ sub evaluate {
     $SPECIFICATION_VERSION = 'draft'.$SPECIFICATION_VERSION
       if $SPECIFICATION_VERSION !~ /^draft/ and any { 'draft'.$SPECIFICATION_VERSION eq $_ } values %version_uris;
 
-    croak '$SPECIFICATION_VERSION value is invalid' if none { $SPECIFICATION_VERSION eq $_ } values %version_uris;
+    croak '$SPECIFICATION_VERSION value is invalid' if not any { $SPECIFICATION_VERSION eq $_ } values %version_uris;
   }
 
   croak 'insufficient arguments' if @_ < 2;
