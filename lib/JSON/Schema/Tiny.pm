@@ -86,7 +86,7 @@ sub evaluate {
     seen => {},
     short_circuit => $BOOLEAN_RESULT || $SHORT_CIRCUIT,
     root_schema => $schema,                 # so we can do $refs within the same document
-    spec_version => $SPECIFICATION_VERSION,
+    specification_version => $SPECIFICATION_VERSION,
   };
 
   my $valid;
@@ -164,45 +164,45 @@ sub _evaluate_subschema ($data, $schema, $state) {
   }
 
   my $valid = 1;
-  my $spec_version = $state->{spec_version}//'';
+  my $specification_version = $state->{specification_version}//'';
 
   foreach my $keyword (
     # CORE KEYWORDS
     qw($id $schema),
-    !$spec_version || $spec_version ne 'draft7' ? '$anchor' : (),
-    !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveAnchor' : (),
-    !$spec_version || $spec_version eq 'draft2020-12' ? '$dynamicAnchor' : (),
+    !$specification_version || $specification_version ne 'draft7' ? '$anchor' : (),
+    !$specification_version || $specification_version eq 'draft2019-09' ? '$recursiveAnchor' : (),
+    !$specification_version || $specification_version eq 'draft2020-12' ? '$dynamicAnchor' : (),
     '$ref',
-    !$spec_version || $spec_version eq 'draft2019-09' ? '$recursiveRef' : (),
-    !$spec_version || $spec_version eq 'draft2020-12' ? '$dynamicRef' : (),
-    !$spec_version || $spec_version ne 'draft7' ? '$vocabulary' : (),
+    !$specification_version || $specification_version eq 'draft2019-09' ? '$recursiveRef' : (),
+    !$specification_version || $specification_version eq 'draft2020-12' ? '$dynamicRef' : (),
+    !$specification_version || $specification_version ne 'draft7' ? '$vocabulary' : (),
     '$comment',
-    !$spec_version || $spec_version eq 'draft7' ? 'definitions' : (),
-    !$spec_version || $spec_version ne 'draft7' ? '$defs' : (),
+    !$specification_version || $specification_version eq 'draft7' ? 'definitions' : (),
+    !$specification_version || $specification_version ne 'draft7' ? '$defs' : (),
     # APPLICATOR KEYWORDS
     qw(allOf anyOf oneOf not if),
-    !$spec_version || $spec_version ne 'draft7' ? 'dependentSchemas' : (),
-    !$spec_version || $spec_version eq 'draft7' ? 'dependencies' : (),
-    !$spec_version || $spec_version !~ qr/^draft(?:7|2019-09)\z/ ? 'prefixItems' : (),
+    !$specification_version || $specification_version ne 'draft7' ? 'dependentSchemas' : (),
+    !$specification_version || $specification_version eq 'draft7' ? 'dependencies' : (),
+    !$specification_version || $specification_version !~ qr/^draft(?:7|2019-09)\z/ ? 'prefixItems' : (),
     'items',
-    !$spec_version || $spec_version =~ qr/^draft(?:7|2019-09)\z/ ? 'additionalItems' : (),
+    !$specification_version || $specification_version =~ qr/^draft(?:7|2019-09)\z/ ? 'additionalItems' : (),
     qw(contains properties patternProperties additionalProperties propertyNames),
     # UNEVALUATED KEYWORDS
-    !$spec_version || $spec_version ne 'draft7' ? qw(unevaluatedItems unevaluatedProperties) : (),
+    !$specification_version || $specification_version ne 'draft7' ? qw(unevaluatedItems unevaluatedProperties) : (),
     # VALIDATOR KEYWORDS
     qw(type enum const
       multipleOf maximum exclusiveMaximum minimum exclusiveMinimum
       maxLength minLength pattern
       maxItems minItems uniqueItems),
-    !$spec_version || $spec_version ne 'draft7' ? qw(maxContains minContains) : (),
+    !$specification_version || $specification_version ne 'draft7' ? qw(maxContains minContains) : (),
     qw(maxProperties minProperties required),
-    !$spec_version || $spec_version ne 'draft7' ? 'dependentRequired' : (),
+    !$specification_version || $specification_version ne 'draft7' ? 'dependentRequired' : (),
   ) {
     next if not exists $schema->{$keyword};
 
     # keywords adjacent to $ref (except for definitions) are not evaluated before draft2019-09
     next if $keyword ne '$ref' and $keyword ne 'definitions'
-      and exists $schema->{'$ref'} and $spec_version eq 'draft7';
+      and exists $schema->{'$ref'} and $specification_version eq 'draft7';
 
     $state->{keyword} = $keyword;
     my $error_count = $state->{errors}->@*;
@@ -218,11 +218,11 @@ sub _evaluate_subschema ($data, $schema, $state) {
   }
 
   # check for previously-supported but now removed keywords
-  foreach my $keyword (sort keys(($removed_keywords{$spec_version}//{})->%*)) {
+  foreach my $keyword (sort keys(($removed_keywords{$specification_version}//{})->%*)) {
     next if not exists $schema->{$keyword};
     my $message ='no-longer-supported "'.$keyword.'" keyword present (at location "'
       .canonical_uri($state).'")';
-    if (my $alternates = $removed_keywords{$spec_version}->{$keyword}) {
+    if (my $alternates = $removed_keywords{$specification_version}->{$keyword}) {
       my @list = map '"'.$_.'"', @$alternates;
       @list = ((map $_.',', @list[0..$#list-1]), $list[-1]) if @list > 2;
       splice(@list, -1, 0, 'or') if @list > 1;
@@ -243,19 +243,19 @@ sub _eval_keyword_schema ($data, $schema, $state) {
   return abort($state, '$schema can only appear at the schema resource root')
     if length($state->{keyword_path});
 
-  my $spec_version = $version_uris{$schema->{'$schema'}};
+  my $specification_version = $version_uris{$schema->{'$schema'}};
   abort($state, 'custom $schema URIs are not supported (must be one of: %s',
      join(', ', map '"'.$_.'"', keys %version_uris))
-    if not $spec_version;
+    if not $specification_version;
 
   abort($state, '"$schema" indicates a different version than that requested by $JSON::Schema::Tiny::SPECIFICATION_VERSION')
-    if defined $SPECIFICATION_VERSION and $SPECIFICATION_VERSION ne $spec_version;
+    if defined $SPECIFICATION_VERSION and $SPECIFICATION_VERSION ne $specification_version;
 
   # we special-case this because the check in _eval for older drafts + $ref has already happened
   abort($state, '$schema and $ref cannot be used together in older drafts')
-    if exists $schema->{'$ref'} and $spec_version eq 'draft7';
+    if exists $schema->{'$ref'} and $specification_version eq 'draft7';
 
-  $state->{spec_version} = $spec_version;
+  $state->{specification_version} = $specification_version;
 }
 
 sub _eval_keyword_ref ($data, $schema, $state) {
@@ -323,7 +323,7 @@ sub _eval_keyword_id ($data, $schema, $state) {
 
   my $uri = Mojo::URL->new($schema->{'$id'});
 
-  if (($state->{spec_version}//'') eq 'draft7') {
+  if (($state->{specification_version}//'') eq 'draft7') {
     if (length($uri->fragment)) {
       abort($state, '$id cannot change the base uri at the same time as declaring an anchor')
         if length($uri->clone->fragment(undef));
@@ -352,10 +352,10 @@ sub _eval_keyword_anchor ($data, $schema, $state) {
   assert_keyword_type($state, $schema, 'string');
 
   return 1 if
-    (!$state->{spec_version} or $state->{spec_version} eq 'draft2019-09')
+    (!$state->{specification_version} or $state->{specification_version} eq 'draft2019-09')
         and ($schema->{'$anchor'}//'') =~ /^[A-Za-z][A-Za-z0-9_:.-]*\z/
       or
-    (!$state->{spec_version} or $state->{spec_version} eq 'draft2020-12')
+    (!$state->{specification_version} or $state->{specification_version} eq 'draft2020-12')
         and ($schema->{'$anchor'}//'') =~ /^[A-Za-z_][A-Za-z0-9._-]*\z/;
 
   abort($state, '$anchor value does not match required syntax');
@@ -805,8 +805,8 @@ sub _eval_keyword_prefixItems ($data, $schema, $state) {
 
 sub _eval_keyword_items ($data, $schema, $state) {
   if (ref $schema->{items} eq 'ARRAY') {
-    abort($state, 'array form of "items" not supported in %s', $state->{spec_version})
-      if ($state->{spec_version}//'') eq 'draft2020-12';
+    abort($state, 'array form of "items" not supported in %s', $state->{specification_version})
+      if ($state->{specification_version}//'') eq 'draft2020-12';
 
     goto \&_eval_keyword__items_array_schemas;
   }
@@ -905,7 +905,7 @@ sub _eval_keyword_contains ($data, $schema, $state) {
 
   # note: no items contained is only valid when minContains is explicitly 0
   if (not $state->{_num_contains} and (($schema->{minContains}//1) > 0
-      or $state->{spec_version} and $state->{spec_version} eq 'draft7')) {
+      or $state->{specification_version} and $state->{specification_version} eq 'draft7')) {
     push $state->{errors}->@*, @errors;
     return E($state, 'subschema is not valid against any item');
   }
