@@ -2,6 +2,13 @@
 
 =encoding UTF-8
 
+=head1 SUPPORT
+
+=for stopwords OpenAPI
+
+You can also find me on the L<JSON Schema Slack server|https://json-schema.slack.com> and L<OpenAPI
+Slack server|https://open-api.slack.com>, which are also great resources for finding help.
+
 =for stopwords schema subschema metaschema validator evaluator
 
 =head1 NAME
@@ -10,7 +17,10 @@ JSON::Schema::Tiny - Validate data against a schema, minimally
 
 =head1 VERSION
 
-version 0.033
+version 0.034
+
+I use a linearly-increasing version numbering scheme. No meaning should be
+presumed or inferred from the version being less than 1.0.
 
 =head1 SYNOPSIS
 
@@ -89,16 +99,16 @@ failure).
 
 All options are available as package-scoped global variables. Use L<local|perlfunc/local> to
 configure them for a local scope. They may also be set via the constructor, as lower-cased values in
-a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_traversal_depth => 10); >>
+a hash, e.g.: C<< JSON::Schema::Tiny->new(boolean_result => 1, max_depth => 10); >>
 
 =head2 C<$BOOLEAN_RESULT>
 
 When true, L</evaluate> will return a true or false result only, with no error strings. This enables
 short-circuit mode internally as this cannot affect results except get there faster. Defaults to false.
 
-=head2 C<$MAX_TRAVERSAL_DEPTH>
+=head2 C<$MAX_DEPTH>
 
-The maximum number of levels deep a schema traversal may go, before evaluation is halted. This is to
+The maximum number of levels deep a schema descent may go, before evaluation is halted. This is to
 protect against accidental infinite recursion, such as from two subschemas that each reference each
 other, or badly-written schemas that could be optimized. Defaults to 50.
 
